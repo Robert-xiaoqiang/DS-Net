@@ -1,0 +1,92 @@
+NAME: 'w48-baseline-0'
+DEVICE: 'cuda:0,1,2,3'
+SEED: 32767
+SUMMARY_DIR: '/home/xqwang/projects/camouflaged/dev/summary'
+CUDNN:
+  BENCHMARK: true
+  DETERMINISTIC: false
+  ENABLED: true
+MODEL:
+  NAME: HRNet
+  NONLOCAL_TYPE: 'none'
+  PRETRAINED: '/home/xqwang/projects/camouflaged/dev/pretrained/hrnetv2_w48_imagenet_pretrained.pth'
+  EXTRA:
+    FINAL_CONV_KERNEL: 1
+    STAGE1:
+      NUM_MODULES: 1
+      NUM_BRANCHES: 1
+      BLOCK: BOTTLENECK
+      NUM_BLOCKS:
+      - 4
+      NUM_CHANNELS:
+      - 64
+      FUSE_METHOD: SUM
+    STAGE2:
+      NUM_MODULES: 1
+      NUM_BRANCHES: 2
+      BLOCK: BASIC
+      NUM_BLOCKS:
+      - 4
+      - 4
+      NUM_CHANNELS:
+      - 48
+      - 96
+      FUSE_METHOD: SUM
+    STAGE3:
+      NUM_MODULES: 4
+      NUM_BRANCHES: 3
+      BLOCK: BASIC
+      NUM_BLOCKS:
+      - 4
+      - 4
+      - 4
+      NUM_CHANNELS:
+      - 48
+      - 96
+      - 192
+      FUSE_METHOD: SUM
+    STAGE4:
+      NUM_MODULES: 3
+      NUM_BRANCHES: 4
+      BLOCK: BASIC
+      NUM_BLOCKS:
+      - 4
+      - 4
+      - 4
+      - 4
+      NUM_CHANNELS:
+      - 48
+      - 96
+      - 192
+      - 384
+      FUSE_METHOD: SUM
+TRAIN:
+  TRAINER: 'SupervisedTrainer'
+  DATASET_ROOT: '/home/xqwang/projects/camouflaged/datasets/COD10K_CPD1K_CAMO_Combined'
+  TRAIN_SIZE:
+  - 352
+  - 352
+  BATCH_SIZE: 32
+  SHUFFLE: true
+  NUM_EPOCHS: 900
+  RESUME: true
+  WORKERS: 4
+  LOSS_FREQ: 10
+  TB_FREQ: 10
+  OPTIM: 'sgd_trick'
+  LR: 0.001
+  LD: 0.9
+  WD: 0.0005
+  MOMENTUM: 0.9
+  NESTEROV: false
+  REDUCTION: 'mean'
+VAL:
+  DATASET_ROOT: '/home/xqwang/projects/camouflaged/datasets/VAL'
+TEST:
+  DATASET_ROOTS:
+  - CAMO: '/home/xqwang/projects/camouflaged/datasets/CAMO'
+  - CHAMELEON: '/home/xqwang/projects/camouflaged/datasets/CHAMELEON'
+  - COD10K: '/home/xqwang/projects/camouflaged/datasets/COD10K'
+  - CPD1K: '/home/xqwang/projects/camouflaged/datasets/CPD1K'
+  BATCH_SIZE: 32
+  WORKERS: 8
