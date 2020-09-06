@@ -157,7 +157,7 @@ class SupervisedTrainer:
 
     def multigpu_heuristic(self, state_dict):
         new_state_dict = OrderedDict()
-        curr_state_dict_keys = set(self.model.state_dict().keys())
+        curr_state_dict_keys = set(self.model.model.state_dict().keys())
         # if state dict comes form nn.DataParallel but we use non-parallel model here then the state dict keys do not
         # match. Use heuristic to make it match
         for key, value in state_dict.items():
@@ -170,7 +170,7 @@ class SupervisedTrainer:
             if new_key in curr_state_dict_keys:
                 new_state_dict[new_key] = value
             else:
-                self.logger.info('there are unknown keys in loaded checkpoint')
+                self.logger.info('there are unknown keys ({} -> {}) in loaded checkpoint'.format(key, new_key))
         return new_state_dict
 
     def load_checkpoint(self, snapshot_key = 'latest'):
@@ -189,7 +189,7 @@ class SupervisedTrainer:
             
             model_state_dict = params['model_state_dict']
             model_state_dict = self.multigpu_heuristic(model_state_dict)
-            self.model.load_state_dict(model_state_dict)
+            self.model.model.load_state_dict(model_state_dict)
         
             self.optimizer.load_state_dict(params['optimizer_state_dict'])
             self.lr_scheduler.load_state_dict(params['lr_scheduler_state_dict'])
@@ -204,7 +204,7 @@ class SupervisedTrainer:
     # epoch to resume after suspending or storing
     def summary_model(self, epoch, snapshot_key = 'latest'):
         model_file_name = os.path.join(self.snapshot_path, 'model_{}.ckpt'.format(snapshot_key))
-        torch.save({ 'model_state_dict': self.model.state_dict(),
+        torch.save({ 'model_state_dict': self.model.model.state_dict(),
                      'optimizer_state_dict': self.optimizer.state_dict(),
                      'lr_scheduler_state_dict': self.lr_scheduler.state_dict(),
                      'epoch': epoch
@@ -216,13 +216,13 @@ class SupervisedTrainer:
         return tuple(batch_data)
 
     def train_epoch(self, epoch):
-        # set evaluation mode in self.on_epoch_end()
+        # set evaluation mode in self.on_epoch_end(), here reset training mode
         self.model.train()
         for batch_index, batch_data in enumerate(self.train_dataloader):
-            batch_rgb, batch_label\
+            batch_rgb, batch_depth, batch_label\
             = self.build_data(batch_data)
 
-            losses, output = self.model(batch_rgb, batch_label)
+            losses, output = self.model(batch_rgb, batch_depth, batch_label)
             # here loss is gathered from each rank, mean/sum it to scalar
             if self.config.TRAIN.REDUCTION == 'mean':
                 loss = losses.mean()
@@ -268,12 +268,14 @@ class SupervisedTrainer:
         val_loss, results = self.validate()
         
         is_update = results['MAE'] < self.best_val_results['MAE'] and \
-                    results['S'] > self.best_val_results['S']
+                    results['S'] > self.best_val_results['S'] and \
+                    results['MAXF'] > self.best_val_results['MAXF'] and \
+                    results['MAXE'] > self.best_val_results['MAXE']
         
         self.writer.add_scalar('val/loss_cur', val_loss, epoch)
         self.writer.add_scalar('val/S', results['S'], epoch)
-        # self.writer.add_scalar('val/MAXF', results['MAXF'], epoch)
-        # self.writer.add_scalar('val/MAXE', results['MAXE'], epoch)
+        self.writer.add_scalar('val/MAXF', results['MAXF'], epoch)
+        self.writer.add_scalar('val/MAXE', results['MAXE'], epoch)
         self.writer.add_scalar('val/MAE', results['MAE'], epoch)
 
         if is_update:
@@ -314,9 +316,9 @@ class SupervisedTrainer:
         for batch_id, batch_data in tqdm_iter:
             tqdm_iter.set_description(f'Infering: te=>{batch_id + 1}')
             with torch.no_grad():
-                batch_rgb, batch_label, batch_mask_path, batch_key, \
+                batch_rgb, batch_depth, batch_label, batch_mask_path, batch_key, \
                 = self.build_data(batch_data)
-                losses, output = self.model(batch_rgb, batch_label)
+                losses, output = self.model(batch_rgb, batch_depth, batch_label)
             
             val_loss.update(losses.mean().item())
             output_cpu = output.cpu().detach()
@@ -326,6 +328,6 @@ class SupervisedTrainer:
                 preds.append(pred)
                 masks.append(mask)
         self.logger.info('Start evaluation on validating dataset')
-        results = Evaluator.fast_evaluate(preds, masks)
+        results = Evaluator.evaluate(preds, masks)
         self.logger.info('Finish evaluation on validating dataset')
         return val_loss.average(), results

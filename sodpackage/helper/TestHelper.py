@@ -383,24 +383,3 @@ class Evaluator:
         else:
             Q = 0
         return Q
-
-class FullModelForTest(nn.Module):
-    """
-    Distribute the loss on multi-gpu to reduce 
-    the memory cost in the main gpu.
-    You can check the following discussion.
-    https://discuss.pytorch.org/t/dataparallel-imbalanced-memory-usage/22551/21
-    """
-    def __init__(self, model):
-        super().__init__()
-        self.model = model
-        self.loss = None
-
-    def forward(self, inputs):
-        outputs = self.model(inputs)
-        # wrapped as tuple for the convenience of inference
-        if isinstance(outputs, (list, tuple)):
-            ret = outputs
-        else:
-            ret = (outputs,)
-        return ret

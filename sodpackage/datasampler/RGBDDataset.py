@@ -3,18 +3,19 @@ from torch import nn
 from torch.nn import init
 from torch.nn import functional as F
 from torchvision import transforms
+import numpy as np
 from PIL import Image
+from pprint import pprint
 
 import os
 
 from .transforms.JointTransformer import JointCompose, JointResize, JointRandomHorizontallyFlip, JointRandomRotate
 
-class CODDataset(torch.utils.data.Dataset):
+class RGBDDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_root, train_size):
-        self.data_list = self._make_list(dataset_root, [ 'Image', 'GT' ])
-
-        self.mean = [0.485, 0.456, 0.406]
-        self.std = [0.229, 0.224, 0.225]
+        self.data_list = self._make_list(dataset_root, [ 'RGB', 'depth', 'GT' ])
+        self.mean = np.array([0.447, 0.407, 0.386])
+        self.std = np.array([0.244, 0.250, 0.253])
 
         self.joint_transform = JointCompose([
             JointResize(train_size),
@@ -25,23 +26,14 @@ class CODDataset(torch.utils.data.Dataset):
             transforms.ToTensor(),
             transforms.Normalize(self.mean, self.std)
             ])
+        self.depth_transform = transforms.ToTensor()
         self.mask_transform = transforms.ToTensor()
     
     def __len__(self):
         return len(self.data_list)
 
     def __getitem__(self, index):
-        image_path, mask_path = self.data_list[index]
-
-        image = Image.open(image_path).convert('RGB')
-        mask = Image.open(mask_path).convert('L')
-
-        image, mask = self.joint_transform(image, mask)
-        image = self.image_transform(image)
-        mask = self.mask_transform(mask)
-        image_main_name = os.path.splitext(os.path.basename(image_path))[0]
-
-        return image, mask, image_main_name
+        raise NotImplementedError
 
     def _get_ext(self, path_list):
         main_list = set()
@@ -60,7 +52,7 @@ class CODDataset(torch.utils.data.Dataset):
                 ext = '.bmp'
             else:
                 raise NotImplementedError
-            construct_print(f"数据文件夹中包含多种扩展名，这里仅使用{ext}")
+            pprint('There are multiple kinds of extension in this directory, we just use `{}`'.format(ext))
         elif len(ext_list) == 1:
             ext = ext_list[0]
         else:
@@ -68,8 +60,8 @@ class CODDataset(torch.utils.data.Dataset):
         return main_list, ext
 
     def _make_list(self, root, keys):
-        exts = [ ]
         main_file_names = set()
+        exts = [ ]
         for key in keys:
             keypath = os.path.join(root, key)
             cur_main_file_names, cur_ext = self._get_ext(os.listdir(keypath))

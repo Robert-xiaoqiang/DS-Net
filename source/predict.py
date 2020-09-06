@@ -3,9 +3,9 @@ import os
 sys.path.insert(1, os.path.dirname(os.path.dirname(__file__)))
 import argparse
 
-from codpackage import architecture
-from codpackage.datasampler.DataPreprocessor import DataPreprocessor
-from codpackage.inference.Deducer import Deducer
+from sodpackage import architecture
+from sodpackage.datasampler.DataPreprocessor import DataPreprocessor
+from sodpackage.inference.Deducer import Deducer
 
 from configure.default import config, update_config
 

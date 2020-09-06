@@ -11,7 +11,6 @@ import torch._utils
 import torch.nn.functional as F
 
 from ..Component.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
-
 BatchNorm2d = SynchronizedBatchNorm2d
 BN_MOMENTUM = 0.01
 
@@ -251,8 +250,9 @@ blocks_dict = {
 class HRNet(nn.Module):
 
     def __init__(self, config, in_planes = 3):
-        extra = config.MODEL.EXTRA
         super().__init__()
+        extra = config.MODEL.EXTRA
+        self.in_planes = in_planes
 
         # stem net
         self.conv1 = nn.Conv2d(in_planes, 64, kernel_size=3, stride=2, padding=1,
@@ -423,7 +423,7 @@ class HRNet(nn.Module):
             else:
                 x_list.append(y_list[i])
         x = self.stage4(x_list)
-        
+
         return x
 
     def init_weights(self, pretrained=''):
@@ -438,12 +438,18 @@ class HRNet(nn.Module):
             pretrained_dict = torch.load(pretrained)
             pprint('=> loading ImageNet scratch pretrained model {}'.format(pretrained))
             model_dict = self.state_dict()
-            pretrained_dict = {k: v for k, v in pretrained_dict.items()
-                               if k in model_dict.keys()}
-            model_dict.update(pretrained_dict)
+
+            filtered_dict = { }
+            for k, v in pretrained_dict.items():
+                if k in model_dict.keys():
+                    if k.startswith('conv1') and self.in_planes == 1:
+                        continue
+                    filtered_dict[k] = v
+
+            model_dict.update(filtered_dict)
             self.load_state_dict(model_dict)
             pprint('=> loaded ImageNet scratch pretrained model {}'.format(pretrained))
         else:
             pprint('=> cannot find ImageNet scratch pretrained model')
 
-Backbobe = HRNet
+Backbone = HRNet

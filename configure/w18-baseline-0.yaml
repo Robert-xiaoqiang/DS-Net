@@ -7,8 +7,7 @@ CUDNN:
   DETERMINISTIC: false
   ENABLED: true
 MODEL:
-  NAME: HRNet
-  NONLOCAL_TYPE: 'none'
+  NAME: MRFNet
   PRETRAINED: '/home/xqwang/projects/saliency/dev/pretrained/hrnetv2_w18_imagenet_pretrained.pth'
   EXTRA:
     FINAL_CONV_KERNEL: 1
@@ -90,6 +89,6 @@ TEST:
   - SIP: '/home/xqwang/projects/saliency/datasets-fdp/SIP'
   - LFSD: '/home/xqwang/projects/saliency/datasets-fdp/LFSD'
   - STERE: '/home/xqwang/projects/saliency/datasets-fdp/STERE'
-  - DUT-RGBD: '/home/xqwang/projects/saliency/datasets-fdp/DUT-RGBD'
-  BATCH_SIZE: 128
+  - DUT-RGBD: '/home/xqwang/projects/saliency/datasets-fdp/DUT-RGBD/test_data'
+  BATCH_SIZE: 2
   WORKERS: 8

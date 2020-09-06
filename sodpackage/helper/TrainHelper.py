@@ -47,6 +47,7 @@ class FocalLoss(nn.Module):
             loss = loss.sum()
         return loss
 
+# contrastive enhanced loss
 class CEL(nn.Module):
     def __init__(self):
         super(CEL, self).__init__()
@@ -360,8 +361,8 @@ class FullModel(nn.Module):
     self.model = model
     self.loss = loss
 
-  def forward(self, inputs, labels):
-    outputs = self.model(inputs)
+  def forward(self, rgb_inputs, depth_inputs, labels):
+    outputs = self.model(rgb_inputs, depth_inputs)
     loss = self.loss(outputs, labels)
     # here convert to scalar to 1-d tensor for reduce operation
     return torch.unsqueeze(loss, 0), outputs

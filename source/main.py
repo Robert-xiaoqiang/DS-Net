@@ -3,9 +3,9 @@ import os
 sys.path.insert(1, os.path.dirname(os.path.dirname(__file__)))
 import argparse
 
-from codpackage import architecture
-from codpackage.datasampler.DataPreprocessor import DataPreprocessor
-from codpackage import trainer
+from sodpackage import architecture
+from sodpackage.datasampler.DataPreprocessor import DataPreprocessor
+from sodpackage import trainer
 
 from configure.default import config, update_config
 
@@ -14,7 +14,7 @@ def parse_args():
     
     parser.add_argument('--cfg',
                         help='experiment configure file name',
-                        default='/home/xqwang/projects/camouflaged/dev/configure/w48.yaml',
+                        default='/home/xqwang/projects/saliency/dev/configure/w18-baseline-0.yaml',
                         type=str)
     parser.add_argument('opts',
                         help="Modify config options using the command-line",

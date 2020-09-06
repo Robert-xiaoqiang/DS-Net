@@ -8,9 +8,14 @@ from pprint import pprint
 from .DAM import DAM
 from .Backbone import Backbone
 
+from ..Component.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
+BatchNorm2d = SynchronizedBatchNorm2d
+BN_MOMENTUM = 0.01
+
 class MRFNet(nn.Module):
     def __init__(self, config):
         super().__init__()
+        extra = config.MODEL.EXTRA
         self.rgb_net = Backbone(config)
         self.depth_net = Backbone(config, 1)
         self.inplanes = self.rgb_net.last_stage_channels
