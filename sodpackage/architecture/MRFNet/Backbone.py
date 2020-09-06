@@ -250,12 +250,12 @@ blocks_dict = {
 
 class HRNet(nn.Module):
 
-    def __init__(self, config):
+    def __init__(self, config, in_planes = 3):
         extra = config.MODEL.EXTRA
         super().__init__()
 
         # stem net
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1,
+        self.conv1 = nn.Conv2d(in_planes, 64, kernel_size=3, stride=2, padding=1,
                                bias=False)
         self.bn1 = BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1,
@@ -299,26 +299,8 @@ class HRNet(nn.Module):
             pre_stage_channels, num_channels)
         self.stage4, pre_stage_channels = self._make_stage(
             self.stage4_cfg, num_channels, multi_scale_output=True)
-        
-        last_inp_channels = np.int(np.sum(pre_stage_channels))
 
-        self.last_layer = nn.Sequential(
-            nn.Conv2d(
-                in_channels=last_inp_channels,
-                out_channels=last_inp_channels,
-                kernel_size=1,
-                stride=1,
-                padding=0),
-            BatchNorm2d(last_inp_channels, momentum=BN_MOMENTUM),
-            nn.ReLU(inplace=False),
-            nn.Conv2d(
-                in_channels=last_inp_channels,
-                out_channels=1,
-                kernel_size=extra.FINAL_CONV_KERNEL,
-                stride=1,
-                padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0),
-            nn.Sigmoid()
-        )
+        self.last_stage_channels = pre_stage_channels
 
     def _make_transition_layer(
             self, num_channels_pre_layer, num_channels_cur_layer):
@@ -441,20 +423,10 @@ class HRNet(nn.Module):
             else:
                 x_list.append(y_list[i])
         x = self.stage4(x_list)
-
-        # Upsampling
-        x0_h, x0_w = x[0].size(2), x[0].size(3)
-        x1 = F.interpolate(x[1], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-        x2 = F.interpolate(x[2], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-        x3 = F.interpolate(x[3], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-
-        x = torch.cat([x[0], x1, x2, x3], 1)
-        x = self.last_layer(x)
-
-        x = F.interpolate(x, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
+        
         return x
 
-    def init_weights(self, pretrained='',):
+    def init_weights(self, pretrained=''):
         pprint('=> init weights from normal distribution')
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -473,3 +445,5 @@ class HRNet(nn.Module):
             pprint('=> loaded ImageNet scratch pretrained model {}'.format(pretrained))
         else:
             pprint('=> cannot find ImageNet scratch pretrained model')
+
+Backbobe = HRNet

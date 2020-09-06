@@ -1,7 +1,7 @@
 NAME: 'w48-baseline-0'
 DEVICE: 'cuda:0,1,2,3'
 SEED: 32767
-SUMMARY_DIR: '/home/xqwang/projects/camouflaged/dev/summary'
+SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
 CUDNN:
   BENCHMARK: true
   DETERMINISTIC: false
@@ -9,7 +9,7 @@ CUDNN:
 MODEL:
   NAME: HRNet
   NONLOCAL_TYPE: 'none'
-  PRETRAINED: '/home/xqwang/projects/camouflaged/dev/pretrained/hrnetv2_w48_imagenet_pretrained.pth'
+  PRETRAINED: '/home/xqwang/projects/saliency/dev/pretrained/hrnetv2_w48_imagenet_pretrained.pth'
   EXTRA:
     FINAL_CONV_KERNEL: 1
     STAGE1:
@@ -62,7 +62,7 @@ MODEL:
       FUSE_METHOD: SUM
 TRAIN:
   TRAINER: 'SupervisedTrainer'
-  DATASET_ROOT: '/home/xqwang/projects/camouflaged/datasets/COD10K_CPD1K_CAMO_Combined'
+  DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
   - 352
   - 352
@@ -81,12 +81,15 @@ TRAIN:
   NESTEROV: false
   REDUCTION: 'mean'
 VAL:
-  DATASET_ROOT: '/home/xqwang/projects/camouflaged/datasets/VAL'
+  DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/VAL'
 TEST:
   DATASET_ROOTS:
-  - CAMO: '/home/xqwang/projects/camouflaged/datasets/CAMO'
-  - CHAMELEON: '/home/xqwang/projects/camouflaged/datasets/CHAMELEON'
-  - COD10K: '/home/xqwang/projects/camouflaged/datasets/COD10K'
-  - CPD1K: '/home/xqwang/projects/camouflaged/datasets/CPD1K'
+  - NJUD: '/home/xqwang/projects/saliency/datasets-fdp/NJUD'
+  - NLPR: '/home/xqwang/projects/saliency/datasets-fdp/NLPR'
+  - RGBD135: '/home/xqwang/projects/saliency/datasets-fdp/RGBD135'
+  - SIP: '/home/xqwang/projects/saliency/datasets-fdp/SIP'
+  - LFSD: '/home/xqwang/projects/saliency/datasets-fdp/LFSD'
+  - STERE: '/home/xqwang/projects/saliency/datasets-fdp/STERE'
+  - DUT-RGBD: '/home/xqwang/projects/saliency/datasets-fdp/DUT-RGBD'
   BATCH_SIZE: 32
   WORKERS: 8

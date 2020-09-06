@@ -3,9 +3,8 @@ from torch import nn
 
 
 class DAM(nn.Module):
-
     def __init__(self, inplanes, planes):
-        super(DAM, self).__init__()
+        super().__init__()
 
         self.inplanes = inplanes
         self.planes = planes

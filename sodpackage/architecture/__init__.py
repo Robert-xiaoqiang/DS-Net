@@ -1,9 +1,9 @@
-from . import HRNet, IHR, MultiIHR, ContrastiveMultiIHR
+from . import MRFNet
 # print(locals())
 def get_model(cfg):
-    # get class
+    # get class by subpackage.module.classname
     Model = eval(cfg.MODEL.NAME + '.' + cfg.MODEL.NAME + '.' + cfg.MODEL.NAME)
-    # get instance
+    # get instance by instantiation
     model = Model(cfg)
     model.init_weights(cfg.MODEL.PRETRAINED)
 
