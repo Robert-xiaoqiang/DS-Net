@@ -152,9 +152,9 @@ class Deducer:
             for batch_id, batch_data in tqdm_iter:
                 tqdm_iter.set_description(f'Infering: te=>{batch_id + 1}')
                 with torch.no_grad():
-                    batch_rgb, batch_label, batch_mask_path, batch_key, \
+                    batch_rgb, batch_depth, batch_label, batch_mask_path, batch_key, \
                     = self.build_data(batch_data)
-                    output = self.model(batch_rgb)
+                    output = self.model(batch_rgb, batch_depth)
 
                 output_cpu = output[0].cpu().detach()
                 for pred, mask_path, image_main_name in zip(output_cpu, batch_mask_path, batch_key):

@@ -11,6 +11,28 @@ import logging
 import time
 from pathlib import Path
 
+class BerhuLoss(nn.Module):
+    def __init__(self, reduction):
+        super().__init__()
+        self.reduction = reduction
+    '''
+        B * 1 * H * W
+        B * 1 * H * W
+        normalized to [0, 1]
+    '''
+    def forward(self, inputs, targets):
+        absdiff = torch.abs(inputs - targets)
+        c = 0.2 * torch.max(absdiff)
+        otherwise = 0.5 * (torch.pow(absdiff, 2) + c * c) / c
+        condition = absdiff <= c
+        loss = torch.where(condition, absdiff, otherwise)
+        if self.reduction == 'mean':
+            loss = loss.mean()
+        elif self.reduction != 'sum':
+            raise NotImplementedError
+
+        return loss
+
 class FocalLoss(nn.Module):
     def __init__(self,
                  alpha=0.25,
@@ -357,7 +379,7 @@ class FullModel(nn.Module):
   https://discuss.pytorch.org/t/dataparallel-imbalanced-memory-usage/22551/21
   """
   def __init__(self, model, loss):
-    super(FullModel, self).__init__()
+    super().__init__()
     self.model = model
     self.loss = loss
 
@@ -367,15 +389,22 @@ class FullModel(nn.Module):
     # here convert to scalar to 1-d tensor for reduce operation
     return torch.unsqueeze(loss, 0), outputs
 
-class ContrastiveFullModel(nn.Module):
-  """
-  Distribute the loss on multi-gpu to reduce 
-  the memory cost in the main gpu.
-  You can check the following discussion.
-  https://discuss.pytorch.org/t/dataparallel-imbalanced-memory-usage/22551/21
-  """
+class DAFullModel(nn.Module):
   def __init__(self, model, loss):
-    super(ContrastiveFullModel, self).__init__()
+    super().__init__()
+    self.model = model
+    self.loss = loss
+
+  def forward(self, rgb_inputs, depth_inputs, labels):
+    sod_outputs, depth_outputs = self.model(rgb_inputs, depth_inputs)
+    sod_loss = self.loss[0](sod_outputs, labels)
+    depth_loss = self.loss[1](depth_outputs, depth_inputs)
+    # here convert to scalar to 1-d tensor for reduce operation
+    return torch.unsqueeze(sod_loss, 0), torch.unsqueeze(depth_loss, 0), outputs
+
+class ContrastiveFullModel(nn.Module):
+  def __init__(self, model, loss):
+    super().__init__()
     self.model = model
     self.loss = loss
 

@@ -396,8 +396,8 @@ class FullModelForTest(nn.Module):
         self.model = model
         self.loss = None # without persistables, without parameters
 
-    def forward(self, inputs):
-        outputs = self.model(inputs)
+    def forward(self, rgb_inputs, depth_inputs):
+        outputs = self.model(rgb_inputs, depth_inputs)
         # wrapped as tuple for the convenience of inference
         if isinstance(outputs, (list, tuple)):
             ret = outputs

@@ -60,15 +60,15 @@ class RGBDDataset(torch.utils.data.Dataset):
         return main_list, ext
 
     def _make_list(self, root, keys):
-        main_file_names = set()
+        main_file_names = None
         exts = [ ]
         for key in keys:
             keypath = os.path.join(root, key)
             cur_main_file_names, cur_ext = self._get_ext(os.listdir(keypath))
-            main_file_names.update(cur_main_file_names)
-            exts.append(cur_ext)    
+            # main_file_names.update(cur_main_file_names) |=
+            main_file_names = cur_main_file_names if main_file_names is None else main_file_names & cur_main_file_names
+            exts.append(cur_ext)
 
         return [[ os.path.join(root, keys[i], main_file_name + exts[i]) 
                 for i in range(len(keys)) ]
                 for main_file_name in main_file_names]
-
