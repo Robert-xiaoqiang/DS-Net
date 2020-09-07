@@ -16,7 +16,7 @@ import copy
 from collections import OrderedDict
 
 from ..helper.TrainHelper import AverageMeter, LoggerPather, DeviceWrapper
-from ..helper.TestHelper import Evaluator
+from ..helper.TestHelper import Evaluator, FullModelForTest
 
 class Deducer:
     def __init__(self, model, test_dataloaders, config):
@@ -30,6 +30,8 @@ class Deducer:
 
         self.wrapped_device = DeviceWrapper()(config.DEVICE)
         self.main_device = torch.device(self.wrapped_device if self.wrapped_device == 'cpu' else 'cuda:' + str(self.wrapped_device[0]))
+
+        self.model = FullModelForTest(self.model)
 
         self.model.to(self.main_device)
         if type(self.wrapped_device) == list:

@@ -43,6 +43,8 @@ class MRFNet(nn.Module):
         )
 
     def forward(self, rgb, depth):
+        ori_h, ori_w = rgb.shape[2], rgb.shape[3]
+
         rgb_feature = self.rgb_net(rgb)
         depth_feature = self.depth_net(depth)
 

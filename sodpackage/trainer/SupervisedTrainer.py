@@ -56,10 +56,10 @@ class SupervisedTrainer:
         self.loaded_epoch = None
         self.to_pil = transforms.ToPILImage()
         self.best_val_results = {
-            'MAE': 2147483647.0,
-            # 'MAXE': 0.0,
             'S': 0.0,
-            # 'MAXF': 0.0,
+            'MAXF': 0.0,
+            'MAXE': 0.0,
+            'MAE': 2147483647.0
         }
 
     def wrap_model(self):
@@ -157,7 +157,7 @@ class SupervisedTrainer:
 
     def multigpu_heuristic(self, state_dict):
         new_state_dict = OrderedDict()
-        curr_state_dict_keys = set(self.model.model.state_dict().keys())
+        curr_state_dict_keys = set(self.model.state_dict().keys())
         # if state dict comes form nn.DataParallel but we use non-parallel model here then the state dict keys do not
         # match. Use heuristic to make it match
         for key, value in state_dict.items():
@@ -189,7 +189,7 @@ class SupervisedTrainer:
             
             model_state_dict = params['model_state_dict']
             model_state_dict = self.multigpu_heuristic(model_state_dict)
-            self.model.model.load_state_dict(model_state_dict)
+            self.model.load_state_dict(model_state_dict)
         
             self.optimizer.load_state_dict(params['optimizer_state_dict'])
             self.lr_scheduler.load_state_dict(params['lr_scheduler_state_dict'])
@@ -204,7 +204,7 @@ class SupervisedTrainer:
     # epoch to resume after suspending or storing
     def summary_model(self, epoch, snapshot_key = 'latest'):
         model_file_name = os.path.join(self.snapshot_path, 'model_{}.ckpt'.format(snapshot_key))
-        torch.save({ 'model_state_dict': self.model.model.state_dict(),
+        torch.save({ 'model_state_dict': self.model.state_dict(),
                      'optimizer_state_dict': self.optimizer.state_dict(),
                      'lr_scheduler_state_dict': self.lr_scheduler.state_dict(),
                      'epoch': epoch
@@ -252,10 +252,12 @@ class SupervisedTrainer:
         self.writer.add_scalar('train/loss_cur', loss, iteration)
         self.writer.add_scalar('train/loss_avg', self.loss_avg_meter.average(), iteration)
         
-        tr_tb_mask = make_grid(batch_label[:8], nrow=8, padding=5)
+        row = self.config.TRAIN.TB_ROW if train_batch_size >= self.config.TRAIN.TB_ROW else train_batch_size
+
+        tr_tb_mask = make_grid(batch_label[:row], nrow=row, padding=5)
         self.writer.add_image('train/masks', tr_tb_mask, iteration)
         
-        tr_tb_out_1 = make_grid(output[:8], nrow=8, padding=5)
+        tr_tb_out_1 = make_grid(output[:row], nrow=row, padding=5)
         self.writer.add_image('train/preds', tr_tb_out_1, iteration)
 
     def summary_loss(self, loss, epoch, iteration):

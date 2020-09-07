@@ -72,6 +72,7 @@ TRAIN:
   WORKERS: 4
   LOSS_FREQ: 10
   TB_FREQ: 10
+  TB_ROW: 8
   OPTIM: 'sgd_trick'
   LR: 0.001
   LD: 0.9

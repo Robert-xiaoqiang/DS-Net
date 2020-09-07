@@ -1,5 +1,5 @@
 NAME: 'w18-baseline-0'
-DEVICE: 'cuda:0,1,2,3'
+DEVICE: 'cuda:0'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
 CUDNN:
@@ -63,15 +63,16 @@ TRAIN:
   TRAINER: 'SupervisedTrainer'
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
-  - 352
-  - 352
-  BATCH_SIZE: 128
+  - 256
+  - 256
+  BATCH_SIZE: 32
   WORKERS: 4
   SHUFFLE: true
   NUM_EPOCHS: 700
   RESUME: true
   LOSS_FREQ: 10
   TB_FREQ: 10
+  TB_ROW: 8
   OPTIM: 'sgd_trick'
   LR: 0.0001
   LD: 0.9
@@ -90,5 +91,5 @@ TEST:
   - LFSD: '/home/xqwang/projects/saliency/datasets-fdp/LFSD'
   - STERE: '/home/xqwang/projects/saliency/datasets-fdp/STERE'
   - DUT-RGBD: '/home/xqwang/projects/saliency/datasets-fdp/DUT-RGBD/test_data'
-  BATCH_SIZE: 2
+  BATCH_SIZE: 32
   WORKERS: 8
