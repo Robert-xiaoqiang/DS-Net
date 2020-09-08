@@ -399,6 +399,9 @@ class DAFullModel(nn.Module):
     sod_outputs, depth_outputs = self.model(rgb_inputs, depth_inputs)
     sod_loss = self.loss[0](sod_outputs, labels)
     depth_loss = self.loss[1](depth_outputs, depth_inputs)
+
+    outputs = sod_outputs
+
     # here convert to scalar to 1-d tensor for reduce operation
     return torch.unsqueeze(sod_loss, 0), torch.unsqueeze(depth_loss, 0), outputs
 

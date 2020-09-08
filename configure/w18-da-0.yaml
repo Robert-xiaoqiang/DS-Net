@@ -1,4 +1,4 @@
-NAME: 'w18-baseline-0'
+NAME: 'w18-da-0'
 DEVICE: 'cuda:0'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
@@ -7,7 +7,7 @@ CUDNN:
   DETERMINISTIC: false
   ENABLED: true
 MODEL:
-  NAME: MRFNet
+  NAME: DAMRFNet
   PRETRAINED: '/home/xqwang/projects/saliency/dev/pretrained/hrnetv2_w18_imagenet_pretrained.pth'
   EXTRA:
     FINAL_CONV_KERNEL: 1
@@ -60,12 +60,12 @@ MODEL:
       - 144
       FUSE_METHOD: SUM
 TRAIN:
-  TRAINER: SupervisedTrainer
+  TRAINER: DASupervisedTrainer
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
   - 256
   - 256
-  BATCH_SIZE: 32
+  BATCH_SIZE: 16
   WORKERS: 4
   SHUFFLE: true
   NUM_EPOCHS: 700

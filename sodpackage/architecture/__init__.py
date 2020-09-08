@@ -1,4 +1,4 @@
-from . import MRFNet
+from . import MRFNet, DAMRFNet
 # print(locals())
 def get_model(cfg):
     # get class by subpackage.module.classname

@@ -43,17 +43,21 @@ class DASupervisedTrainer(SupervisedTrainer):
             batch_rgb, batch_depth, batch_label\
             = self.build_data(batch_data)
 
-            losses, output = self.model(batch_rgb, batch_depth, batch_label)
+            sod_losses, depth_losses, output = self.model(batch_rgb, batch_depth, batch_label)
             # here loss is gathered from each rank, mean/sum it to scalar
             if self.config.TRAIN.REDUCTION == 'mean':
-                loss = losses.mean()
+                sod_loss = sod_losses.mean()
+                depth_loss = depth_losses.mean()
             else:
-                loss = losses.sum()
-            self.on_batch_end(output, batch_label, loss, epoch, batch_index)
+                sod_loss = sod_losses.sum()
+                depth_loss = depth_losses.sum()
+            self.on_batch_end(output, batch_label, sod_loss, depth_loss, epoch, batch_index)
 
-    def on_batch_end(self, output, batch_label, loss,
-                        epoch, batch_index):
+    def on_batch_end(self, output, batch_label,
+                     sod_loss, depth_loss,
+                     epoch, batch_index):
         
+        loss = sod_loss + depth_loss
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -62,18 +66,20 @@ class DASupervisedTrainer(SupervisedTrainer):
         self.loss_avg_meter.update(loss.item())
 
         if not iteration % self.config.TRAIN.LOSS_FREQ:
-            self.summary_loss(loss, epoch, iteration)
+            self.summary_loss(loss, sod_loss, depth_loss, epoch, iteration)
         
         if not iteration % self.config.TRAIN.TB_FREQ:
-            self.summary_tb(output, batch_label, loss, epoch, iteration)
+            self.summary_tb(output, batch_label, loss, sod_loss, depth_loss, epoch, iteration)
 
-    def summary_tb(self, output, batch_label, loss, epoch, iteration):
+    def summary_tb(self, output, batch_label, loss, sod_loss, depth_loss, epoch, iteration):
         train_batch_size = output.shape[0]
         self.writer.add_scalar('train/lr', self.optimizer.param_groups[0]['lr'], iteration)
         self.writer.add_scalar('train/loss_cur', loss, iteration)
         self.writer.add_scalar('train/loss_avg', self.loss_avg_meter.average(), iteration)
-        
-        row = self.config.TRAIN.TB_ROW if train_batch_size >= self.config.TRAIN.TB_ROW else train_batch_size
+        self.writer.add_scalar('train/loss_sod', sod_loss, iteration)
+        self.writer.add_scalar('train/loss_depth', depth_loss, iteration)
+
+        row = min(self.config.TRAIN.TB_ROW, train_batch_size)
 
         tr_tb_mask = make_grid(batch_label[:row], nrow=row, padding=5)
         self.writer.add_image('train/masks', tr_tb_mask, iteration)
@@ -81,53 +87,11 @@ class DASupervisedTrainer(SupervisedTrainer):
         tr_tb_out_1 = make_grid(output[:row], nrow=row, padding=5)
         self.writer.add_image('train/preds', tr_tb_out_1, iteration)
 
-    def summary_loss(self, loss, epoch, iteration):
-        self.logger.info('[epoch {}/{} - iteration {}/{}]: loss(cur): {:.4f}, loss(avg): {:.4f}, lr: {:.8f}'\
-                .format(epoch, self.num_epochs, iteration, self.num_iterations, loss.item(), self.loss_avg_meter.average(), self.optimizer.param_groups[0]['lr']))
-
-    def on_epoch_end(self, epoch):
-        self.lr_scheduler.step(epoch + 1)
-        self.save_checkpoint(epoch + 1)
-        val_loss, results = self.validate()
-        
-        is_update = results['MAE'] < self.best_val_results['MAE'] and \
-                    results['S'] > self.best_val_results['S'] and \
-                    results['MAXF'] > self.best_val_results['MAXF'] and \
-                    results['MAXE'] > self.best_val_results['MAXE']
-        
-        self.writer.add_scalar('val/loss_cur', val_loss, epoch)
-        self.writer.add_scalar('val/S', results['S'], epoch)
-        self.writer.add_scalar('val/MAXF', results['MAXF'], epoch)
-        self.writer.add_scalar('val/MAXE', results['MAXE'], epoch)
-        self.writer.add_scalar('val/MAE', results['MAE'], epoch)
-
-        if is_update:
-            self.best_val_results.update(results)
-            self.save_checkpoint(epoch + 1, 'best')
-            self.logger.info('Update best epoch')
-            self.logger.info('Epoch {} with best validating results: {}'.format(epoch, self.best_val_results))
-        else:
-            self.logger.info('Epoch with validating loss {:.4f}, without updating best epoch'.format(val_loss))
-
-    def on_train_end(self):
-        self.logger.info('Finish training with epoch {}, close all'.format(self.num_epochs))
-        self.writer.close()
-        self.test()
-
-    def train(self):
-        self.build_train_model()
-        
-        start_epoch = self.loaded_epoch if self.loaded_epoch is not None else 0
-        end_epoch = self.num_epochs
-
-        for epoch in range(start_epoch, end_epoch):
-            self.train_epoch(epoch)
-            self.on_epoch_end(epoch)
-        self.on_train_end()
-
-    def test(self):
-        deducer = Deducer(self.vanilla_model, self.test_dataloaders, self.config)
-        deducer.deduce()
+    def summary_loss(self, loss, sod_loss, depth_loss, epoch, iteration):
+        self.logger.info('[epoch {}/{} - iteration {}/{}]: loss(cur): {:.4f} = [{:.4f}+{:.4f}], loss(avg): {:.4f}, lr: {:.8f}'\
+                .format(epoch, self.num_epochs, iteration, self.num_iterations, \
+                loss.item(), sod_loss.item(), depth_loss.item(), \
+                self.loss_avg_meter.average(), self.optimizer.param_groups[0]['lr']))
 
     def validate(self):
         self.model.eval()
@@ -141,9 +105,17 @@ class DASupervisedTrainer(SupervisedTrainer):
             with torch.no_grad():
                 batch_rgb, batch_depth, batch_label, batch_mask_path, batch_key, \
                 = self.build_data(batch_data)
-                losses, output = self.model(batch_rgb, batch_depth, batch_label)
+                sod_losses, depth_losses, output = self.model(batch_rgb, batch_depth, batch_label)
             
-            val_loss.update(losses.mean().item())
+            if self.config.TRAIN.REDUCTION == 'mean':
+                sod_loss = sod_losses.mean()
+                depth_loss = depth_losses.mean()
+            else:
+                sod_loss = sod_losses.sum()
+                depth_loss = depth_losses.sum()
+            loss = sod_loss + depth_loss
+
+            val_loss.update(loss.item())
             output_cpu = output.cpu().detach()
             for pred, mask_path in zip(output_cpu, batch_mask_path):
                 mask = copy.deepcopy(Image.open(mask_path).convert('L'))

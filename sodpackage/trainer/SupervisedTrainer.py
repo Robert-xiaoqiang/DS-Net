@@ -252,7 +252,7 @@ class SupervisedTrainer:
         self.writer.add_scalar('train/loss_cur', loss, iteration)
         self.writer.add_scalar('train/loss_avg', self.loss_avg_meter.average(), iteration)
         
-        row = self.config.TRAIN.TB_ROW if train_batch_size >= self.config.TRAIN.TB_ROW else train_batch_size
+        row = min(self.config.TRAIN.TB_ROW, train_batch_size)
 
         tr_tb_mask = make_grid(batch_label[:row], nrow=row, padding=5)
         self.writer.add_image('train/masks', tr_tb_mask, iteration)
@@ -321,8 +321,13 @@ class SupervisedTrainer:
                 batch_rgb, batch_depth, batch_label, batch_mask_path, batch_key, \
                 = self.build_data(batch_data)
                 losses, output = self.model(batch_rgb, batch_depth, batch_label)
-            
-            val_loss.update(losses.mean().item())
+
+            if self.config.TRAIN.REDUCTION == 'mean':
+                loss = losses.mean()
+            else:
+                loss = losses.sum()
+
+            val_loss.update(loss.item())
             output_cpu = output.cpu().detach()
             for pred, mask_path in zip(output_cpu, batch_mask_path):
                 mask = copy.deepcopy(Image.open(mask_path).convert('L'))

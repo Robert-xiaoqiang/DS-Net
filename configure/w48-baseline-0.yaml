@@ -60,7 +60,7 @@ MODEL:
       - 384
       FUSE_METHOD: SUM
 TRAIN:
-  TRAINER: 'SupervisedTrainer'
+  TRAINER: SupervisedTrainer
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
   - 352
