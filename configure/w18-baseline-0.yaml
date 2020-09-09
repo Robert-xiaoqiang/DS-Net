@@ -73,13 +73,13 @@ TRAIN:
   LOSS_FREQ: 10
   TB_FREQ: 10
   TB_ROW: 8
-  OPTIM: 'sgd_trick'
+  OPTIM: sgd_trick
   LR: 0.001
   LD: 0.9
   WD: 0.0005
   MOMENTUM: 0.9
   NESTEROV: false
-  REDUCTION: 'mean'
+  REDUCTION: mean
 VAL:
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/VAL'
 TEST:

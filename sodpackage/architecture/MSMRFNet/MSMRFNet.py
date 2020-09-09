@@ -14,6 +14,7 @@ BN_MOMENTUM = 0.01
 
 class MSDAM(nn.Module):
     def __init__(self, channels_list):
+        super().__init__()
         self.n = len(channels_list)
         self.dams = nn.ModuleList([ DAM(p, p) for p in channels_list ])
 
@@ -24,7 +25,7 @@ class MSDAM(nn.Module):
 
         target_list = [ ]
         for i in range(self.n):
-            f = self.dams(rgb_feature[i], depth_feature[i])
+            f = self.dams[i](rgb_feature[i], depth_feature[i])
             # maybe identity
             f = F.interpolate(f, size = target_size, mode = 'bilinear', align_corners = True)
             target_list.append(f)
@@ -33,7 +34,8 @@ class MSDAM(nn.Module):
         return target
 
 class MSDecoder(nn.Module):
-    def __init__(self, inplanes):
+    def __init__(self, inplanes, extra):
+        super().__init__()
         self.inplanes = inplanes
         self.last_layer = nn.Sequential(
             nn.Conv2d(
@@ -70,7 +72,7 @@ class MSMRFNet(nn.Module):
 
         last_inp_channels = np.int(np.sum(self.inplanes))
 
-        self.decoders = nn.ModuleList([ MSDecoder(np.int(np.sum(l))) for l in self.stage_channels ])
+        self.decoders = nn.ModuleList([ MSDecoder(np.int(np.sum(l)), extra) for l in self.stage_channels ])
 
     def forward(self, rgb, depth):
         ori_h, ori_w = rgb.shape[2], rgb.shape[3]
@@ -88,8 +90,11 @@ class MSMRFNet(nn.Module):
         x = [ self.decoders[i](x[i]) for i in range(num_stages) ]
 
         # Upsampling 4 times
-        x = [ F.interpolate(x, size=(ori_h, ori_w), mode='bilinear', align_corners=True) for i in range(num_stages) ]
+        x = [ F.interpolate(x[i], size=(ori_h, ori_w), mode='bilinear', align_corners=True) for i in range(num_stages) ]
 
+        # list of mask
+        # reverse it to ensure that output[0] is always final output
+        x.reverse()
         return x
 
     def init_weights(self, pretrained = ''):

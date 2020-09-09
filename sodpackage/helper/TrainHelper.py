@@ -28,7 +28,9 @@ class BerhuLoss(nn.Module):
         loss = torch.where(condition, absdiff, otherwise)
         if self.reduction == 'mean':
             loss = loss.mean()
-        elif self.reduction != 'sum':
+        elif self.reduction == 'sum':
+            loss = loss.sum()
+        else:
             raise NotImplementedError
 
         return loss
@@ -69,17 +71,30 @@ class FocalLoss(nn.Module):
             loss = loss.sum()
         return loss
 
-# contrastive enhanced loss
-class CEL(nn.Module):
-    def __init__(self):
-        super(CEL, self).__init__()
+'''
+    contrastive enhanced loss
+    aka dice loss
+'''
+class DiceLoss(nn.Module):
+    def __init__(self, reduction):
+        super().__init__()
+        self.reduction = reduction
         self.eps = 1e-6
     
     def forward(self, pred, target):
         intersection = pred * target
         numerator = (pred - intersection).sum() + (target - intersection).sum()
         denominator = pred.sum() + target.sum()
-        return numerator / (denominator + self.eps)
+        loss = numerator / (denominator + self.eps)
+
+        if self.reduction == 'mean':
+            loss = loss.mean()
+        elif self.reduction == 'sum':
+            loss = loss.sum()
+        else:
+            raise NotImplementedError
+
+        return loss        
 
 class LossCalculator:
 
@@ -389,6 +404,22 @@ class FullModel(nn.Module):
     # here convert to scalar to 1-d tensor for reduce operation
     return torch.unsqueeze(loss, 0), outputs
 
+class DiceFullModel(nn.Module):
+  def __init__(self, model, loss):
+    super().__init__()
+    self.model = model
+    self.loss = loss
+
+  def forward(self, rgb_inputs, depth_inputs, labels):
+    sod_outputs = self.model(rgb_inputs, depth_inputs)
+    bce_loss = self.loss[0](sod_outputs, labels)
+    dice_loss = self.loss[1](sod_outputs, labels)
+
+    outputs = sod_outputs
+
+    # here convert to scalar to 1-d tensor for reduce operation
+    return torch.unsqueeze(bce_loss, 0), torch.unsqueeze(dice_loss, 0), outputs
+
 class DAFullModel(nn.Module):
   def __init__(self, model, loss):
     super().__init__()
@@ -404,6 +435,31 @@ class DAFullModel(nn.Module):
 
     # here convert to scalar to 1-d tensor for reduce operation
     return torch.unsqueeze(sod_loss, 0), torch.unsqueeze(depth_loss, 0), outputs
+
+class MSFullModel(nn.Module):
+    pass
+
+class MSDiceFullModel(nn.Module):
+  def __init__(self, model, loss):
+    super().__init__()
+    self.model = model
+    self.loss = loss
+
+  def forward(self, rgb_inputs, depth_inputs, labels):
+    # reversed (stage4 -> 3 -> 2 -> 1)
+    multi_outputs = self.model(rgb_inputs, depth_inputs)
+    multi_loss = [ ]
+
+    for stage_outputs in multi_outputs:
+        bce_loss = self.loss[0](stage_outputs, labels)
+        dice_loss = self.loss[1](stage_outputs, labels)
+        loss = bce_loss + dice_loss
+        multi_loss.append(torch.unsqueeze(loss, 0))
+
+    outputs = multi_outputs
+
+    # here convert to scalar to 1-d tensor for reduce operation
+    return tuple(multi_loss) + tuple(outputs)
 
 class ContrastiveFullModel(nn.Module):
   def __init__(self, model, loss):

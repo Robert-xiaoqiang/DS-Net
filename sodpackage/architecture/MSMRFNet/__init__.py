@@ -1,1 +1,1 @@
-from . import MRFNet
+from . import MSMRFNet
