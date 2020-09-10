@@ -82,7 +82,7 @@ class MSDiceSupervisedTrainer(SupervisedTrainer):
         self.writer.add_scalar('train/loss_cur', loss, iteration)
         self.writer.add_scalar('train/loss_avg', self.loss_avg_meter.average(), iteration)
         for i, stage_loss in enumerate(reversed(loss_list), 1):
-            self.writer.add_scalar('train/loss_stage_{}'.format(i), stage_loss)
+            self.writer.add_scalar('train/loss_stage_{}'.format(i), stage_loss, iteration)
 
         row = min(self.config.TRAIN.TB_ROW, train_batch_size)
 

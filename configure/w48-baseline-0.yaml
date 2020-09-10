@@ -1,5 +1,5 @@
 NAME: 'w48-baseline-0'
-DEVICE: 'cuda:0,1,2,3'
+DEVICE: 'cuda:0'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
 CUDNN:
@@ -65,7 +65,7 @@ TRAIN:
   TRAIN_SIZE:
   - 352
   - 352
-  BATCH_SIZE: 32
+  BATCH_SIZE: 4
   SHUFFLE: true
   NUM_EPOCHS: 900
   RESUME: true
