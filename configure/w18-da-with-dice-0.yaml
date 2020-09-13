@@ -1,4 +1,4 @@
-NAME: 'w18-da-0'
+NAME: 'w18-da-with-dice-0'
 DEVICE: 'cuda:0'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
@@ -60,7 +60,7 @@ MODEL:
       - 144
       FUSE_METHOD: SUM
 TRAIN:
-  TRAINER: DASupervisedTrainer
+  TRAINER: DADiceSupervisedTrainer
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
   - 256
@@ -73,13 +73,13 @@ TRAIN:
   LOSS_FREQ: 10
   TB_FREQ: 10
   TB_ROW: 8
-  OPTIM: 'sgd_trick'
+  OPTIM: sgd_trick
   LR: 0.001
   LD: 0.9
   WD: 0.0005
   MOMENTUM: 0.9
   NESTEROV: false
-  REDUCTION: 'mean'
+  REDUCTION: mean
 VAL:
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/VAL'
 TEST:
