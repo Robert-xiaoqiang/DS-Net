@@ -461,6 +461,19 @@ class MSDiceFullModel(nn.Module):
     # here convert to scalar to 1-d tensor for reduce operation
     return tuple(multi_loss) + tuple(outputs)
 
+class DADiceFullModel(nn.Module):
+    def __init__(self, model, loss):
+        super().__init__()
+        self.model = model
+        self.loss = loss
+
+    def forward(self, rgb_inputs, depth_inputs, labels):
+        sod_outputs, depth_outputs = self.model(rgb_inputs, depth_inputs)
+        sod_bce_loss = self.loss[0](sod_outputs, labels)
+        sod_dice_loss = self.loss[1](sod_outputs, labels)
+        sod_loss = sod_bce_loss + sod_dice_loss
+        depth_loss = self.loss[2](depth_outputs, depth_inputs)
+
 class ContrastiveFullModel(nn.Module):
   def __init__(self, model, loss):
     super().__init__()
