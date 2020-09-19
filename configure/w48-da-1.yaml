@@ -63,7 +63,7 @@ TRAIN:
   TRAINER: DASupervisedTrainer
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
-  - 352
+  - 352 # fake
   - 352
   BATCH_SIZE: 8
   SHUFFLE: true
