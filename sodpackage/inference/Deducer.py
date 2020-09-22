@@ -85,7 +85,7 @@ class Deducer:
         return tuple(batch_data)
 
     def build_test_model(self):        
-        b = self.load_checkpoint(snapshot_key = 'latest')
+        b = self.load_checkpoint(snapshot_key = 'best')
         if b:
             self.logger.info('loaded successfully, test based on model from best epoch {}'.format(self.loaded_epoch))
         else:
