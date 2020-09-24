@@ -404,3 +404,18 @@ class FullModelForTest(nn.Module):
         else:
             ret = (outputs,)
         return ret
+
+class PreTrainingFullModelForTest(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+        self.loss = None # without persistables, without parameters
+
+    def forward(self, rgb_inputs):
+        outputs = self.model(rgb_inputs)
+        # wrapped as tuple for the convenience of inference
+        if isinstance(outputs, (list, tuple)):
+            ret = outputs
+        else:
+            ret = (outputs,)
+        return ret

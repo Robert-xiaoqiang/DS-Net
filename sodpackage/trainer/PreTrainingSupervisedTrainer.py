@@ -15,7 +15,7 @@ import copy
 from collections import OrderedDict
 
 from ..helper.TrainHelper import AverageMeter, LoggerPather, DeviceWrapper, \
-FullModel, BerhuLoss
+PreTrainingFullModel, BerhuLoss
 from ..helper.TestHelper import Evaluator
 from ..inference.Deducer import Deducer
 
@@ -57,8 +57,10 @@ class PreTrainingSupervisedTrainer:
         self.loaded_epoch = None
         self.to_pil = transforms.ToPILImage()
 
+        self.best_val_results = 32767.0
+
     def wrap_model(self):
-        self.model = FullModel(self.model, self.criterion)
+        self.model = PreTrainingFullModel(self.model, self.criterion)
         # self.model = nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
         self.model.to(self.main_device)
         if type(self.wrapped_device) == list:
@@ -262,7 +264,15 @@ class PreTrainingSupervisedTrainer:
     def on_epoch_end(self, epoch):
         self.lr_scheduler.step(epoch + 1)
         self.save_checkpoint(epoch + 1)
-        self.logger.info('On epoch end, we do nothing when pretraining the rgb2depth network')
+
+        val_loss = self.validate()
+        is_update = val_loss < self.best_val_results
+        if is_update:
+            self.best_val_results = val_loss
+            self.save_checkpoint(epoch + 1, 'best')
+            self.logger.info('Epoch {} with best validating results: {:.4f}'.format(epoch, self.best_val_results))
+        else:
+            self.logger.info('Epoch with validating loss {:.4f}, without updating best epoch'.format(val_loss))
     
     def on_train_end(self):
         self.logger.info('Finish training with epoch {}, close all'.format(self.num_epochs))
@@ -284,3 +294,23 @@ class PreTrainingSupervisedTrainer:
         deducer = Deducer(self.vanilla_model, self.test_dataloaders, self.config)
         self.logger.info('On train end, we just predict the depth maps without evaluation')
         deducer.predict()
+
+    def validate(self):
+        self.model.eval()
+        val_loss = AverageMeter()
+
+        tqdm_iter = tqdm(enumerate(self.val_dataloader), total=len(self.val_dataloader), leave=False)
+        for batch_id, batch_data in tqdm_iter:
+            tqdm_iter.set_description(f'Infering: te=>{batch_id + 1}')
+            with torch.no_grad():
+                batch_rgb, batch_label, batch_mask_path, batch_key, \
+                = self.build_data(batch_data)
+                losses, output = self.model(batch_rgb, batch_label)
+
+            if self.config.TRAIN.REDUCTION == 'mean':
+                loss = losses.mean()
+            else:
+                loss = losses.sum()
+
+            val_loss.update(loss.item())
+        return val_loss.average()

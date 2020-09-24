@@ -401,7 +401,19 @@ class FullModel(nn.Module):
   def forward(self, rgb_inputs, depth_inputs, labels):
     outputs = self.model(rgb_inputs, depth_inputs)
     loss = self.loss(outputs, labels)
-    # here convert to scalar to 1-d tensor for reduce operation
+    # here convert to scalar to 1-d tensor for reduce/gather operation
+    return torch.unsqueeze(loss, 0), outputs
+
+class PreTrainingFullModell(nn.Module):
+  def __init__(self, model, loss):
+    super().__init__()
+    self.model = model
+    self.loss = loss
+
+  def forward(self, rgb_inputs, labels):
+    outputs = self.model(rgb_inputs)
+    loss = self.loss(outputs, labels)
+    # here convert to scalar to 1-d tensor for reduce/gather operation
     return torch.unsqueeze(loss, 0), outputs
 
 class DiceFullModel(nn.Module):
