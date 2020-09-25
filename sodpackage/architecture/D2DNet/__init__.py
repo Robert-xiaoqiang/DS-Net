@@ -1,1 +1,1 @@
-from . import D2D
+from . import RGB2DepthNet
