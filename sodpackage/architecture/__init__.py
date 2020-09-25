@@ -1,4 +1,6 @@
-from . import MRFNet, MSMRFNet, DAMRFNet
+from . import MRFNet, MSMRFNet, DAMRFNet, \
+RGB2DepthNet
+
 # print(locals())
 def get_model(cfg):
     # get class by subpackage.module.classname

@@ -17,7 +17,7 @@ from collections import OrderedDict
 from ..helper.TrainHelper import AverageMeter, LoggerPather, DeviceWrapper, \
 PreTrainingFullModel, BerhuLoss
 from ..helper.TestHelper import Evaluator
-from ..inference.Deducer import Deducer
+from .. import inference
 
 class PreTrainingSupervisedTrainer:
     def __init__(self, model, train_dataloader, val_dataloader, test_dataloaders, config):
@@ -291,6 +291,7 @@ class PreTrainingSupervisedTrainer:
         self.on_train_end()
 
     def test(self):
+        Deducer = inference.get_deducer(self.config)
         deducer = Deducer(self.vanilla_model, self.test_dataloaders, self.config)
         self.logger.info('On train end, we just predict the depth maps without evaluation')
         deducer.predict()

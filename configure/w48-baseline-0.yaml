@@ -61,10 +61,11 @@ MODEL:
       FUSE_METHOD: SUM
 TRAIN:
   TRAINER: SupervisedTrainer
+  DATASET: RGBDTrainDataset
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
-  - 352 # fake
-  - 352
+  - 256
+  - 256
   BATCH_SIZE: 4
   SHUFFLE: true
   NUM_EPOCHS: 900
@@ -81,8 +82,11 @@ TRAIN:
   NESTEROV: false
   REDUCTION: mean
 VAL:
+  DATASET: RGBDTestDataset
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/VAL'
 TEST:
+  DEDUCER: Deducer
+  DATASET: RGBDTestDataset
   DATASET_ROOTS:
   - NJUD: '/home/xqwang/projects/saliency/datasets-fdp/NJUD'
   - NLPR: '/home/xqwang/projects/saliency/datasets-fdp/NLPR'

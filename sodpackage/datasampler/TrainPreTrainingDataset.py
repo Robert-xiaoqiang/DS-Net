@@ -1,7 +1,7 @@
 from .PreTrainingDataset import PreTrainingDataset
 from PIL import Image
 
-class TrainRGBDDataset(PreTrainingDataset):
+class TrainPreTrainingDataset(PreTrainingDataset):
     def __init__(self, dataset_root, train_size):
         super().__init__(dataset_root, train_size)
     

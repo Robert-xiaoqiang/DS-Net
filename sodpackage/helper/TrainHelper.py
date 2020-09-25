@@ -404,7 +404,7 @@ class FullModel(nn.Module):
     # here convert to scalar to 1-d tensor for reduce/gather operation
     return torch.unsqueeze(loss, 0), outputs
 
-class PreTrainingFullModell(nn.Module):
+class PreTrainingFullModel(nn.Module):
   def __init__(self, model, loss):
     super().__init__()
     self.model = model

@@ -5,7 +5,7 @@ import argparse
 
 from sodpackage import architecture
 from sodpackage.datasampler.DataPreprocessor import DataPreprocessor
-from sodpackage.inference.Deducer import Deducer
+from sodpackage import inference
 
 from configure.default import config, update_config
 
@@ -32,6 +32,9 @@ def main():
     preprocessor = DataPreprocessor(config)
     test_dataloaders = preprocessor.get_test_dataloaders()
 
+    # get class
+    Deducer = inference.get_deducer(config)
+    # instantiate
     deducer = Deducer(model, test_dataloaders, config)
     deducer.deduce()
 

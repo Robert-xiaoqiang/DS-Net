@@ -1,5 +1,8 @@
 from .TrainRGBDDataset import TrainRGBDDataset
 from .TestRGBDDataset import TestRGBDDataset
+from .TrainPreTrainingDataset import TrainPreTrainingDataset
+from .ValPreTrainingDataset import ValPreTrainingDataset
+from .TestPreTrainingDataset import TestPreTrainingDataset
 
 from torch.utils.data import DataLoader
 import numpy as np
@@ -13,8 +16,14 @@ class DataPreprocessor:
         self.val_dataloader = None
         self.test_dataloader = None
 
-        self.train_dataset = TrainRGBDDataset(self.config.TRAIN.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
-        self.val_dataset = TestRGBDDataset(self.config.VAL.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
+        # get class
+        TrainDataset = eval(self.config.TRAIN.DATASET)
+        ValDataset = eval(self.config.VAL.DATASET)
+        TestDataset = eval(self.config.TEST.DATASET)
+
+        # instantiate
+        self.train_dataset = TrainDataset(self.config.TRAIN.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
+        self.val_dataset = ValDataset(self.config.VAL.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
 
         self.train_dataloader = DataLoader(self.train_dataset,
                                             batch_size = self.config.TRAIN.BATCH_SIZE,
@@ -34,7 +43,7 @@ class DataPreprocessor:
         # list of 1-pair dictionaries
         for entry in self.config.TEST.DATASET_ROOTS:
             dataset_key, dataset_root = list(entry.items())[0]
-            dataset = TestRGBDDataset(dataset_root, self.config.TRAIN.TRAIN_SIZE)
+            dataset = TestDataset(dataset_root, self.config.TRAIN.TRAIN_SIZE)
             # without shuffle and drop last
             dataloader = DataLoader(dataset,
                                     batch_size = self.config.TEST.BATCH_SIZE,

@@ -36,9 +36,9 @@ def main():
     val_dataloader = preprocessor.get_val_dataloader()
     test_dataloaders = preprocessor.get_test_dataloaders()
     
-    
     # get class
     Trainer = trainer.get_trainer(config)
+    # instantiate
     t = Trainer(model, train_dataloader, val_dataloader, test_dataloaders, config)
     t.train()
 

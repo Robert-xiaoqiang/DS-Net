@@ -25,6 +25,7 @@ _C.MODEL.EXTRA = CN(new_allowed=True)
 # training
 _C.TRAIN = CN()
 _C.TRAIN.TRAINER = ''
+_C.TRAIN.DATASET = ''
 _C.TRAIN.DATASET_ROOT = ''
 _C.TRAIN.TRAIN_SIZE = [352, 352]  # width * height
 _C.TRAIN.BATCH_SIZE = 8
@@ -51,10 +52,13 @@ _C.TRAIN.REDUCTION = 'mean'
 
 # validating
 _C.VAL = CN()
+_C.VAL.DATASET = ''
 _C.VAL.DATASET_ROOT = ''
 
 # testing
 _C.TEST = CN()
+_C.TEST.DEDUCER = ''
+_C.TEST.DATASET = ''
 _C.TEST.DATASET_ROOTS = [ ]
 _C.TEST.BATCH_SIZE = 12
 _C.TEST.WORKERS = 8

@@ -105,7 +105,7 @@ class Deducer:
             for batch_id, batch_data in tqdm_iter:
                 tqdm_iter.set_description(f'Infering: te=>{batch_id + 1}')
                 with torch.no_grad():
-                    batch_rgb, batch_label, batch_mask_path, batch_key, \
+                    batch_rgb, batch_key, \
                     = self.build_data(batch_data)
                     output = self.model(batch_rgb)
 

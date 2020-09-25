@@ -1,5 +1,5 @@
 NAME: 'w48-pretrain-0'
-DEVICE: 'cuda:0,1'
+DEVICE: 'cuda:0'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
 CUDNN:
@@ -7,7 +7,7 @@ CUDNN:
   DETERMINISTIC: false
   ENABLED: true
 MODEL:
-  NAME: MRFNet
+  NAME: RGB2DepthNet
   PRETRAINED: '/home/xqwang/projects/saliency/dev/pretrained/hrnetv2_w48_imagenet_pretrained.pth'
   EXTRA:
     FINAL_CONV_KERNEL: 1
@@ -60,8 +60,9 @@ MODEL:
       - 384
       FUSE_METHOD: SUM
 TRAIN:
-  TRAINER: SupervisedTrainer
-  DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/Depth-Estimation'
+  TRAINER: PreTrainingSupervisedTrainer
+  DATASET: TrainPreTrainingDataset
+  DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
   - 256
   - 256
@@ -81,15 +82,12 @@ TRAIN:
   NESTEROV: false
   REDUCTION: mean
 VAL:
-  DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/Depth-Estimation-VAL'
+  DATASET: ValPreTrainingDataset
+  DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/VAL'
 TEST:
+  DEDUCER: PreTrainingDeducer
+  DATASET: TestPreTrainingDataset
   DATASET_ROOTS:
-  - NJUD: '/home/xqwang/projects/saliency/datasets-fdp/NJUD'
-  - NLPR: '/home/xqwang/projects/saliency/datasets-fdp/NLPR'
-  - RGBD135: '/home/xqwang/projects/saliency/datasets-fdp/RGBD135'
-  - SIP: '/home/xqwang/projects/saliency/datasets-fdp/SIP'
-  - LFSD: '/home/xqwang/projects/saliency/datasets-fdp/LFSD'
-  - STERE: '/home/xqwang/projects/saliency/datasets-fdp/STERE'
-  - DUT-RGBD: '/home/xqwang/projects/saliency/datasets-fdp/DUT-RGBD/test_data'
+  - DUTS: '/home/xqwang/projects/saliency/datasets-fdp/DUTS-TR'
   BATCH_SIZE: 32
   WORKERS: 8
