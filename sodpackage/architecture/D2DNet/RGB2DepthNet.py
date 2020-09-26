@@ -18,7 +18,7 @@ class RGB2DepthNet(nn.Module):
 
         self.encoder = Backbone(config, 3)
         self.inplanes = self.encoder.last_stage_channels
-        last_inp_channels = np.int(np.sum(np.asarray(self.inplanes)))
+        self.last_inp_channels = np.int(np.sum(np.asarray(self.inplanes)))
 
         self.last_layer = nn.Sequential(
             nn.Conv2d(
@@ -43,6 +43,8 @@ class RGB2DepthNet(nn.Module):
 
         x = self.encoder(rgb)
 
+        encoder_output = x
+
         # Upsampling 4 times
         x0_h, x0_w = x[0].size(2), x[0].size(3)
         x1 = F.interpolate(x[1], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
@@ -54,7 +56,7 @@ class RGB2DepthNet(nn.Module):
 
         x = F.interpolate(x, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
 
-        return x
+        return encoder_output, x
 
     def init_weights(self, pretrained = ''):
         pprint('=> init weights for encoder(RGB2DepthNet)')
