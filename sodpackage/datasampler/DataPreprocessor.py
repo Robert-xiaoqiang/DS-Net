@@ -1,5 +1,6 @@
 from .TrainRGBDDataset import TrainRGBDDataset
 from .TestRGBDDataset import TestRGBDDataset
+from .ValRGBDDataset import ValRGBDDataset
 from .TrainPreTrainingDataset import TrainPreTrainingDataset
 from .ValPreTrainingDataset import ValPreTrainingDataset
 from .TestPreTrainingDataset import TestPreTrainingDataset

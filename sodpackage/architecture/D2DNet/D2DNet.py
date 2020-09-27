@@ -1,10 +1,13 @@
 import torch
 from torch import nn
-from troch.nn import init
+from torch.nn import init
 from torch.nn import functional as F
+from pprint import pprint
+
+import os
 
 from .Backbone import Backbone
-from .RGB2DepthNetEncoder import RGB2DepthNetEncoder
+from .RGB2DepthNet import RGB2DepthNet
 
 from ..Component.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 BatchNorm2d = SynchronizedBatchNorm2d
@@ -13,16 +16,16 @@ BN_MOMENTUM = 0.01
 class AffinityLayer(nn.Module):
     def __init__(self, inplanes):
         super().__init__()
-        self.encoder = nn.Conv2d(inplanes, inplanes // 2, 1, stride = 1, padding = 0)
+        self.encoder = nn.Conv2d(inplanes, inplanes, 1, stride = 1, padding = 0)
 
     def forward(self, x):
-        B, C, H, W = x.shape
-
         x = self.encoder(x)
+
+        B, C, H, W = x.shape
         # BHW * C
         x_transposed = x.permute(0, 2, 3, 1)
-        lhs = x_transposed.view(B * H * W, C)
-        rhs = lhs.transpose()
+        lhs = x_transposed.reshape(B * H * W, C)
+        rhs = lhs.T
         
         # all-pair / pair-wise weight or relation
         similarity = torch.mm(lhs, rhs)
@@ -36,22 +39,22 @@ class DiffusionLayer(nn.Module):
     beta = 0.4
     def __init__(self, inplanes):
         super().__init__()
-        self.decoder = nn.Conv2d(inplanes, inplanes * 2, 1, stride = 1, padding = 0)
+        self.decoder = nn.Conv2d(inplanes, inplanes, 1, stride = 1, padding = 0)
 
     def forward(self, x, combination):
-        B, C, H, W = x.shape
-        combination = self.decoder(combination)
+        x = self.decoder(x)
 
+        B, C, H, W = x.shape
         x_transposed = x.permute(0, 2, 3, 1)
         # BHW * C
-        propagation = x_transposed.view(B * H * W, C)
+        propagation = x_transposed.reshape(B * H * W, C)
         for _ in range(4):
             # BHW * BHW, BHW * C
             propagation = torch.mm(combination, propagation)
         
-        propagation = propagation.view(B, H, W, C).permute(0, 3, 1, 2)
+        propagation = propagation.reshape(B, H, W, C).permute(0, 3, 1, 2)
 
-        y = beta * propagation + (1 - beta) * x
+        y = DiffusionLayer.beta * propagation + (1 - DiffusionLayer.beta) * x
 
         return y
 
@@ -108,6 +111,7 @@ class DepthAwarenessModule(nn.Module):
 
 class ComplementaryGatedFusion(nn.Module):
     def __init__(self, inplanes):
+        super().__init__()
         self.inplanes = inplanes
         # requires_grad == True
         self.alpha1 = nn.Parameter(torch.tensor(1.0))
@@ -118,7 +122,7 @@ class ComplementaryGatedFusion(nn.Module):
         self.affinity2 = AffinityLayer(self.inplanes)
         # self.affinity3 = AffinityLayer(self.inplanes)
 
-        self.diffusion = DiffusionLayer(self.inplanes // 2)
+        self.diffusion = DiffusionLayer(self.inplanes)
 
         self.dam = DepthAwarenessModule(self.inplanes, self.inplanes)
 
@@ -144,17 +148,17 @@ class DecoderSubnet(nn.Module):
             nn.Conv2d(
                 in_channels=self.inplanes,
                 out_channels=self.inplanes,
-                kernel_size=1,
+                kernel_size=3,
                 stride=1,
-                padding=0),
+                padding=1),
             BatchNorm2d(self.inplanes, momentum=BN_MOMENTUM),
             nn.ReLU(inplace=False),
             nn.Conv2d(
                 in_channels=self.inplanes,
-                out_channels=1,
-                kernel_size=extra.FINAL_CONV_KERNEL,
+                out_channels=self.inplanes,
+                kernel_size=3,
                 stride=1,
-                padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0)
+                padding=1)
         )
     def forward(self, x):
         y = self.layer(x)
@@ -163,19 +167,33 @@ class DecoderSubnet(nn.Module):
 
 class D2DNet(nn.Module):
     def __init__(self, config):
-        super.__init__()
+        super().__init__()
         self.config = config
         extra = self.config.MODEL.EXTRA
 
-        self.rgb2depth = RGB2DepthNetEncoder(self.config)
+        self.rgb2depth = RGB2DepthNet(self.config)
         last_inp_channels = self.rgb2depth.last_inp_channels
+
         self.depth_estimation_subnet = DecoderSubnet(last_inp_channels)
         self.rgb_subnet = DecoderSubnet(last_inp_channels)
         self.depth_extraction_encoder = Backbone(self.config, 1)
         self.depth_extraction_subnet = DecoderSubnet(last_inp_channels)   
         self.cgf = ComplementaryGatedFusion(last_inp_channels)
         self.last_layer = nn.Sequential(
-            DecoderSubnet(last_inp_channels),
+            nn.Conv2d(
+                in_channels=last_inp_channels,
+                out_channels=last_inp_channels,
+                kernel_size=1,
+                stride=1,
+                padding=0),
+            BatchNorm2d(last_inp_channels, momentum=BN_MOMENTUM),
+            nn.ReLU(inplace=False),
+            nn.Conv2d(
+                in_channels=last_inp_channels,
+                out_channels=1,
+                kernel_size=extra.FINAL_CONV_KERNEL,
+                stride=1,
+                padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0),
             nn.Sigmoid()
         )
 
@@ -193,7 +211,7 @@ class D2DNet(nn.Module):
     def forward(self, rgb, depth):
         ori_h, ori_w = rgb.shape[2], rgb.shape[3]
         # list of features
-        common_encoder_feature = self.rgb2depth(rgb)
+        common_encoder_feature, depth_output = self.rgb2depth(rgb)
         depth_extraction_feature = self.depth_extraction_encoder(depth)
 
         common_encoder_feature = D2DNet.merge(common_encoder_feature)
@@ -207,8 +225,38 @@ class D2DNet(nn.Module):
         
         y = self.last_layer(adaptive_combination)
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
-        
-        return y
+        sod_output = y
 
-    def init_weights(self, pretrained_backbone, pretrained_rgb2depth_encoder):
-        
+        return sod_output, depth_output
+
+    def init_weights(self, pretrained_backbone = ''):
+        pprint('=> init weights from Gaussion distribution')
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.normal_(m.weight, std=0.001)
+            elif isinstance(m, SynchronizedBatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+        pprint('=> init weights from Imagenet pretraining')
+        self.rgb2depth.init_weights(pretrained_backbone)
+        pprint('=> init weights for encoder(depth extraction)')
+        self.depth_extraction_encoder.init_weights(pretrained_backbone)
+
+    def init_pretext(self, pretrained_rgb2depth = ''):
+        pprint('=> init weights from pretext task pretraining')
+        if os.path.isfile(pretrained_rgb2depth):
+            pprint('=> loading depth estimation pretrained model {}'.format(pretrained_rgb2depth))
+            # gpu to cpu
+            persistable_dict = troch.load(pretrained_rgb2depth, map_location = lambda storage, loc: storage)
+            pretrained_dict = persistable_dict['model_state_dict']
+            rgb2depth_dict = self.rgb2depth.state_dict()
+            #
+            #
+            # for future => load encoder only, strip projection head
+            #
+            #
+            self.rgb2depth.load_state_dict(pretrained_dict)
+            pprint('=> loaded depth estimation pretrained model {}'.format(pretrained_rgb2depth))
+        else:
+            pprint('=> cannot find depth estimation pretrained model')

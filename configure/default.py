@@ -15,6 +15,9 @@ _C.CUDNN.BENCHMARK = True
 _C.CUDNN.DETERMINISTIC = False
 _C.CUDNN.ENABLED = True
 
+# pretext or surrgate task pretraining
+_C.PRETEXT = CN(new_allowed = True)
+
 # common params for NETWORK
 _C.MODEL = CN()
 _C.MODEL.NAME = 'HRNet'

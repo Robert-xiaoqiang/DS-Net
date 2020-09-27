@@ -1,5 +1,5 @@
 from . import MRFNet, MSMRFNet, DAMRFNet, \
-RGB2DepthNet
+RGB2DepthNet, D2DNet
 
 # print(locals())
 def get_model(cfg):
@@ -8,5 +8,7 @@ def get_model(cfg):
     # get instance by instantiation
     model = Model(cfg)
     model.init_weights(cfg.MODEL.PRETRAINED)
+    if hasattr(cfg, 'PRETEXT') and hasattr(cfg.PRETEXT, 'PRETRAINED'):
+        model.init_pretext(cfg.PRETEXT.PRETRAINED)
 
     return model
