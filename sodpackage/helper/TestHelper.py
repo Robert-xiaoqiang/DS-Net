@@ -11,6 +11,33 @@ from .TrainHelper import AverageMeter
 import math
 
 class Evaluator:
+    @staticmethod
+    def depth_evaluate(preds, masks):
+        mses = AverageMeter()
+        iterable = list(zip(preds, masks))
+        tqdm_iterable = tqdm(iterable, total=len(iterable), leave=False, desc='Evaluating')
+        for pred, mask in tqdm_iterable:
+            pred = np.asarray(pred)
+            mask = np.asarray(mask)  
+            mse = Evaluator.cal_mse(pred, mask)
+            mses.update(mse)
+        result = {
+            'MSE': mses.average()
+        }
+        return result
+
+    @staticmethod
+    def cal_mse(prediction, gt):
+        assert prediction.dtype == np.uint8
+        assert gt.dtype == np.uint8
+        assert prediction.shape == gt.shape
+
+        H, W = gt.shape
+        diff = prediction - gt
+        diff2 = np.power(diff.astype(np.float32), 2)
+        ret = np.sum(diff2) / (H * W)
+
+        return ret
 
     # evaluate only weight f-measure
     @staticmethod

@@ -268,17 +268,17 @@ class SupervisedTrainer:
         self.lr_scheduler.step(epoch + 1)
         self.save_checkpoint(epoch + 1)
         val_loss, results = self.validate()
-        
-        is_update = results['MAE'] < self.best_val_results['MAE'] and \
-                    results['S'] > self.best_val_results['S'] and \
-                    results['MAXF'] > self.best_val_results['MAXF'] and \
-                    results['MAXE'] > self.best_val_results['MAXE']
-        
+
         self.writer.add_scalar('val/loss_cur', val_loss, epoch)
         self.writer.add_scalar('val/S', results['S'], epoch)
         self.writer.add_scalar('val/MAXF', results['MAXF'], epoch)
         self.writer.add_scalar('val/MAXE', results['MAXE'], epoch)
         self.writer.add_scalar('val/MAE', results['MAE'], epoch)
+
+        is_update = results['MAE'] < self.best_val_results['MAE'] and \
+                    results['S'] > self.best_val_results['S'] and \
+                    results['MAXF'] > self.best_val_results['MAXF'] and \
+                    results['MAXE'] > self.best_val_results['MAXE']
 
         if is_update:
             self.best_val_results.update(results)

@@ -18,7 +18,7 @@ from collections import OrderedDict
 from ..helper.TrainHelper import AverageMeter, LoggerPather, DeviceWrapper
 from ..helper.TestHelper import PreTrainingFullModelForTest
 
-class Deducer:
+class PreTrainingDeducer:
     def __init__(self, model, test_dataloaders, config):
         self.model = model
         self.test_dataloaders = test_dataloaders
@@ -105,15 +105,15 @@ class Deducer:
             for batch_id, batch_data in tqdm_iter:
                 tqdm_iter.set_description(f'Infering: te=>{batch_id + 1}')
                 with torch.no_grad():
-                    batch_rgb, batch_key, \
+                    batch_rgb, batch_image_path, batch_key, \
                     = self.build_data(batch_data)
                     output = self.model(batch_rgb)
 
                 output_cpu = output[0].cpu().detach()
-                for pred, mask_path, image_main_name in zip(output_cpu, batch_mask_path, batch_key):
-                    mask = copy.deepcopy(Image.open(mask_path).convert('L'))
+                for pred, image_path, image_main_name in zip(output_cpu, batch_image_path, batch_key):
+                    raw_image = copy.deepcopy(Image.open(image_path).convert('L'))
                     
-                    pred = self.to_pil(pred).convert('L').resize(mask.size)
+                    pred = self.to_pil(pred).convert('L').resize(raw_image.size)
                     pred.save(os.path.join(save_path, image_main_name + '.png'))
 
         self.logger.info('Finish predicting it, enjoy everything')

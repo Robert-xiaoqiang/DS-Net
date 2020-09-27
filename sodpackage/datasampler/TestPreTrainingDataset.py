@@ -32,4 +32,4 @@ class TestPreTrainingDataset(PreTrainingDataset):
 
         image_main_file_name = os.path.splitext(os.path.basename(image_path))[0]
 
-        return image, image_main_file_name
+        return image, image_path, image_main_file_name

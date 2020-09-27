@@ -371,11 +371,11 @@ class ModelWrapper:
                 param.detach_()
         return model
 
-'''
-    make sure device without any spaces or tabs
-    returned device is either [0, 1, ...] or cpu
-'''
 class DeviceWrapper:
+    '''
+        make sure device without any spaces or tabs
+        returned device is either [0, 1, ...] or cpu
+    '''
     def __init__(self):
         pass
     def __call__(self, device):

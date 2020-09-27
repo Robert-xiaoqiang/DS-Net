@@ -57,7 +57,9 @@ class PreTrainingSupervisedTrainer:
         self.loaded_epoch = None
         self.to_pil = transforms.ToPILImage()
 
-        self.best_val_results = 32767.0
+        self.best_val_results = {
+            'MSE': 32767.0
+        }
 
     def wrap_model(self):
         self.model = PreTrainingFullModel(self.model, self.criterion)
@@ -265,15 +267,18 @@ class PreTrainingSupervisedTrainer:
         self.lr_scheduler.step(epoch + 1)
         self.save_checkpoint(epoch + 1)
 
-        val_loss = self.validate()
-        is_update = val_loss < self.best_val_results
+        val_loss, results = self.validate()
+        self.writer.add_scalar('val/loss_cur', val_loss, epoch)
+        self.writer.add_scalar('val/MSE', results['MSE'], epoch)
+
+        is_update = results['MSE'] < self.best_val_results['MSE']
         if is_update:
-            self.best_val_results = val_loss
+            self.best_val_results.update(results)
             self.save_checkpoint(epoch + 1, 'best')
-            self.logger.info('Epoch {} with best validating results: {:.4f}'.format(epoch, self.best_val_results))
+            self.logger.info('Epoch {} with best validating results: {}'.format(epoch, self.best_val_results))
         else:
             self.logger.info('Epoch with validating loss {:.4f}, without updating best epoch'.format(val_loss))
-    
+
     def on_train_end(self):
         self.logger.info('Finish training with epoch {}, close all'.format(self.num_epochs))
         self.writer.close()
@@ -300,6 +305,8 @@ class PreTrainingSupervisedTrainer:
         self.model.eval()
         val_loss = AverageMeter()
 
+        preds = [ ]
+        masks = [ ]
         tqdm_iter = tqdm(enumerate(self.val_dataloader), total=len(self.val_dataloader), leave=False)
         for batch_id, batch_data in tqdm_iter:
             tqdm_iter.set_description(f'Infering: te=>{batch_id + 1}')
@@ -314,4 +321,14 @@ class PreTrainingSupervisedTrainer:
                 loss = losses.sum()
 
             val_loss.update(loss.item())
-        return val_loss.average()
+            output_cpu = output.cpu().detach()
+            for pred, mask_path in zip(output_cpu, batch_mask_path):
+                mask = copy.deepcopy(Image.open(mask_path).convert('L'))
+                pred = self.to_pil(pred).resize(mask.size)
+                preds.append(pred)
+                masks.append(mask)
+
+        self.logger.info('Start evaluation on validating dataset')
+        results = Evaluator.depth_evaluate(preds, masks)
+        self.logger.info('Finish evaluation on validating dataset')
+        return val_loss.average(), results

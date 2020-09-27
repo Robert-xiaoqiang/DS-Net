@@ -4,7 +4,11 @@ from troch.nn import init
 from torch.nn import functional as F
 
 from .Backbone import Backbone
-from .RGB2DepthNet import RGB2DepthNet
+from .RGB2DepthNetEncoder import RGB2DepthNetEncoder
+
+from ..Component.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
+BatchNorm2d = SynchronizedBatchNorm2d
+BN_MOMENTUM = 0.01
 
 class AffinityLayer(nn.Module):
     def __init__(self, inplanes):
@@ -132,34 +136,79 @@ class ComplementaryGatedFusion(nn.Module):
 
         return y
 
+class DecoderSubnet(nn.Module):
+    def __init__(self, inplanes):
+        super().__init__()
+        self.inplanes = inplanes
+        self.layer = nn.Sequential(
+            nn.Conv2d(
+                in_channels=self.inplanes,
+                out_channels=self.inplanes,
+                kernel_size=1,
+                stride=1,
+                padding=0),
+            BatchNorm2d(self.inplanes, momentum=BN_MOMENTUM),
+            nn.ReLU(inplace=False),
+            nn.Conv2d(
+                in_channels=self.inplanes,
+                out_channels=1,
+                kernel_size=extra.FINAL_CONV_KERNEL,
+                stride=1,
+                padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0)
+        )
+    def forward(self, x):
+        y = self.layer(x)
+
+        return y
+
 class D2DNet(nn.Module):
     def __init__(self, config):
         super.__init__()
         self.config = config
         extra = self.config.MODEL.EXTRA
 
-        self.rgb2depth = RGB2DepthNet(self.config)
-        self.depth_estimation_subnet = None # is just rgb2depth decoder
-
+        self.rgb2depth = RGB2DepthNetEncoder(self.config)
         last_inp_channels = self.rgb2depth.last_inp_channels
-        self.rgb_subnet = nn.Sequential(
-            nn.Conv2d(
-                in_channels=last_inp_channels,
-                out_channels=last_inp_channels,
-                kernel_size=1,
-                stride=1,
-                padding=0),
-            BatchNorm2d(last_inp_channels, momentum=BN_MOMENTUM),
-            nn.ReLU(inplace=False),
-            nn.Conv2d(
-                in_channels=last_inp_channels,
-                out_channels=1,
-                kernel_size=extra.FINAL_CONV_KERNEL,
-                stride=1,
-                padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0),
+        self.depth_estimation_subnet = DecoderSubnet(last_inp_channels)
+        self.rgb_subnet = DecoderSubnet(last_inp_channels)
+        self.depth_extraction_encoder = Backbone(self.config, 1)
+        self.depth_extraction_subnet = DecoderSubnet(last_inp_channels)   
+        self.cgf = ComplementaryGatedFusion(last_inp_channels)
+        self.last_layer = nn.Sequential(
+            DecoderSubnet(last_inp_channels),
             nn.Sigmoid()
         )
 
-        self.depth_extraction = Backbone(self.config)
+    @staticmethod
+    def merge(x):
+        x0_h, x0_w = x[0].size(2), x[0].size(3)
+        x1 = F.interpolate(x[1], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
+        x2 = F.interpolate(x[2], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
+        x3 = F.interpolate(x[3], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
+
+        y = torch.cat([x[0], x1, x2, x3], 1)
+
+        return y
+
     def forward(self, rgb, depth):
-        pass
+        ori_h, ori_w = rgb.shape[2], rgb.shape[3]
+        # list of features
+        common_encoder_feature = self.rgb2depth(rgb)
+        depth_extraction_feature = self.depth_extraction_encoder(depth)
+
+        common_encoder_feature = D2DNet.merge(common_encoder_feature)
+        depth_extraction_feature = D2DNet.merge(depth_extraction_feature)
+
+        from_depth_estimation = self.depth_estimation_subnet(common_encoder_feature)
+        from_rgb = self.rgb_subnet(common_encoder_feature)
+        from_depth_extraction = self.depth_extraction_subnet(depth_extraction_feature)
+        
+        adaptive_combination = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
+        
+        y = self.last_layer(adaptive_combination)
+        y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
+        
+        return y
+
+    def init_weights(self, pretrained_backbone, pretrained_rgb2depth_encoder):
+        
