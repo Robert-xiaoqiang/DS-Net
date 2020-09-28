@@ -13,50 +13,6 @@ from ..Component.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 BatchNorm2d = SynchronizedBatchNorm2d
 BN_MOMENTUM = 0.01
 
-class AffinityLayer(nn.Module):
-    def __init__(self, inplanes):
-        super().__init__()
-        self.encoder = nn.Conv2d(inplanes, inplanes, 1, stride = 1, padding = 0)
-
-    def forward(self, x):
-        x = self.encoder(x)
-
-        B, C, H, W = x.shape
-        # BHW * C
-        x_transposed = x.permute(0, 2, 3, 1)
-        lhs = x_transposed.reshape(B * H * W, C)
-        rhs = lhs.T
-        
-        # all-pair / pair-wise weight or relation
-        similarity = torch.mm(lhs, rhs)
-
-        # row normalization
-        y = F.normalize(similarity, p = 2, dim = 1)
-
-        return y
-
-class DiffusionLayer(nn.Module):
-    beta = 0.4
-    def __init__(self, inplanes):
-        super().__init__()
-        self.decoder = nn.Conv2d(inplanes, inplanes, 1, stride = 1, padding = 0)
-
-    def forward(self, x, combination):
-        x = self.decoder(x)
-
-        B, C, H, W = x.shape
-        x_transposed = x.permute(0, 2, 3, 1)
-        # BHW * C
-        propagation = x_transposed.reshape(B * H * W, C)
-        for _ in range(4):
-            # BHW * BHW, BHW * C
-            propagation = torch.mm(combination, propagation)
-        
-        propagation = propagation.reshape(B, H, W, C).permute(0, 3, 1, 2)
-
-        y = DiffusionLayer.beta * propagation + (1 - DiffusionLayer.beta) * x
-
-        return y
 
 class DepthAwarenessModule(nn.Module):
     def __init__(self, inplanes, planes):
@@ -113,30 +69,18 @@ class ComplementaryGatedFusion(nn.Module):
     def __init__(self, inplanes):
         super().__init__()
         self.inplanes = inplanes
-        # requires_grad == True
-        self.alpha1 = nn.Parameter(torch.tensor(1.0))
-        self.alpha2 = nn.Parameter(torch.tensor(1.0))
-        # self.alpha3 = nn.Parameter(troch.tensor(1.0))
-
-        self.affinity1 = AffinityLayer(self.inplanes)
-        self.affinity2 = AffinityLayer(self.inplanes)
-        # self.affinity3 = AffinityLayer(self.inplanes)
-
-        self.diffusion = DiffusionLayer(self.inplanes)
-
+        self.gated_layer = nn.Sequential(
+            nn.Conv2d(2 * self.inplanes, 2 * self.inplanes, 3, stride = 1, padding = 1),
+            BatchNorm2d(2 * self.inplanes),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(2 * self.inplanes, self.inplanes, 3, stride = 1, padding = 1)
+        )
         self.dam = DepthAwarenessModule(self.inplanes, self.inplanes)
 
     def forward(self, from_depth_estimation, from_rgb, from_depth_extraction):
-        x1 = self.affinity1(from_depth_estimation)
-        x2 = self.affinity2(from_rgb)
-        # x3 = self.affinity3(from_depth_extraction)
-
-        combination = self.alpha1 * x1 + self.alpha2 * x2 #+ self.alpha3 * x3
-
-        # note: from_rgb not x2
-        enhanced_rgb = self.diffusion(from_rgb, combination)
-
-        y = self.dam(enhanced_rgb, from_depth_extraction)
+        complementary = torch.cat([ from_depth_estimation, from_depth_extraction ], dim = 1)
+        gated_depth_feature = self.gated_layer(complementary)
+        y = self.dam(from_rgb, from_depth_extraction)
 
         return y
 
@@ -177,7 +121,8 @@ class D2DNet(nn.Module):
         self.depth_estimation_subnet = DecoderSubnet(last_inp_channels)
         self.rgb_subnet = DecoderSubnet(last_inp_channels)
         self.depth_extraction_encoder = Backbone(self.config, 1)
-        self.depth_extraction_subnet = DecoderSubnet(last_inp_channels)   
+        self.depth_extraction_subnet = DecoderSubnet(last_inp_channels)
+        
         self.cgf = ComplementaryGatedFusion(last_inp_channels)
         self.last_layer = nn.Sequential(
             nn.Conv2d(
@@ -226,7 +171,6 @@ class D2DNet(nn.Module):
         y = self.last_layer(adaptive_combination)
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
         sod_output = y
-
         return sod_output, depth_output
 
     def init_weights(self, pretrained_backbone = ''):
