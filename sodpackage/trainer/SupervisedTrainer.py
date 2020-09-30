@@ -151,7 +151,7 @@ class SupervisedTrainer:
         if self.config.TRAIN.RESUME:
             b = self.load_checkpoint(snapshot_key = 'latest')
             self.logger.info('loaded successfully, continue training from epoch {}'.format(self.loaded_epoch) \
-            if b else 'loaded failed, train from ImageNet scratch')
+            if b else 'loaded failed, train from the devil')
         if not b:
             self.logger.info('loaded nothing new')
 
