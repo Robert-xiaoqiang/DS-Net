@@ -192,15 +192,19 @@ class D2DNet(nn.Module):
         if os.path.isfile(pretrained_rgb2depth):
             pprint('=> loading depth estimation pretrained model {}'.format(pretrained_rgb2depth))
             # gpu to cpu
-            persistable_dict = troch.load(pretrained_rgb2depth, map_location = lambda storage, loc: storage)
+            persistable_dict = torch.load(pretrained_rgb2depth, map_location = lambda storage, loc: storage)
             pretrained_dict = persistable_dict['model_state_dict']
-            rgb2depth_dict = self.rgb2depth.state_dict()
-            #
-            #
-            # for future => load encoder only, strip projection head
-            #
-            #
-            self.rgb2depth.load_state_dict(pretrained_dict)
-            pprint('=> loaded depth estimation pretrained model {}'.format(pretrained_rgb2depth))
+            resumed_epoch = persistable_dict['epoch']
+            # strip depth estimation head or preserve it for depth supervision when sod model training
+            # gpu fullmodel to cpu standalone heuristicly
+            modified_dict = { }
+            for k, v in pretrained_dict.items():
+                modified_k = k[7+6:]
+                if modified_k not in self.rgb2depth.state_dict():
+                    pprint('dismatched key: {}'.format(k))
+                else:
+                    modified_dict[modified_k] = v
+            self.rgb2depth.load_state_dict(modified_dict)
+            pprint('=> loaded depth estimation pretrained model {} from best epoch {}'.format(pretrained_rgb2depth, resumed_epoch))
         else:
             pprint('=> cannot find depth estimation pretrained model')
