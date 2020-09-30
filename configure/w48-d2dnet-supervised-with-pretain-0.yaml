@@ -1,5 +1,5 @@
 NAME: 'w48-d2dnet-supervised-with-pretain-0'
-DEVICE: 'cuda:0'
+DEVICE: 'cuda:0,1'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
 CUDNN:
