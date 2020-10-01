@@ -24,8 +24,21 @@ class TrainSemiRGBDDataset(SemiRGBDDataset):
             mask = Image.open(mask_path).convert('L')
 
             image, depth, mask = self.joint_transform(image, depth, mask)
-            image = self.image_transform(image)
+            image = self.labeled_image_transform(image)
             depth = self.depth_transform(depth)
             mask = self.mask_transform(mask)
+
+            return image, depth, mask
         else:
             index -= len(self.labeled_list)
+            image_path, depth_path = self.unlabeled_list[index]
+            image = Image.open(image_path).convert('RGB')
+            depth = Image.open(depth_path).convert('L')
+
+            image, depth, mask = self.joint_transform(image, depth, mask)
+            image = self.unlabeled_image_transform(image)
+            depth = self.depth_transform(depth)
+             # here cpu float tensor, dataloader is just on cpu before being feeded into model
+            mask = torch.zeros_like(depth)
+
+            return image, depth, mask

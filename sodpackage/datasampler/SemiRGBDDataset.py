@@ -81,4 +81,4 @@ class SemiRGBDDataset(torch.utils.data.Dataset):
                 for main_file_name in main_file_names ]
 
     def get_primary_secondary_indices(self):
-        return np.arange(len(self.imgs)), np.arange(len(self.imgs), len(self.unlabeled_imgs))
+        return np.arange(len(self.labeled_list)), np.arange(len(self.labeled_list), len(self.unlabeled_list))
