@@ -80,7 +80,7 @@ class ComplementaryGatedFusion(nn.Module):
     def forward(self, from_depth_estimation, from_rgb, from_depth_extraction):
         complementary = torch.cat([ from_depth_estimation, from_depth_extraction ], dim = 1)
         gated_depth_feature = self.gated_layer(complementary)
-        y = self.dam(from_rgb, from_depth_extraction)
+        y = self.dam(from_rgb, gated_depth_feature)
 
         return y
 

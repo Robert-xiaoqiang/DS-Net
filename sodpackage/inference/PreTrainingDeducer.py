@@ -99,7 +99,10 @@ class PreTrainingDeducer:
         for dataset_key, dataloader in self.test_dataloaders.items():
             self.logger.info('Test on {}'.format(dataset_key))
             save_path = os.path.join(self.prediction_path, dataset_key)
+            copy_target = list(self.config.TEST.DATASET_ROOTS[0].values())[0]
+            copy_path = os.path.join(copy_target, 'generated_depth')
             os.makedirs(save_path, exist_ok = True)
+            os.makedirs(copy_path, exist_ok = True)
 
             tqdm_iter = tqdm(enumerate(dataloader), total=len(dataloader), leave=False)
             for batch_id, batch_data in tqdm_iter:
@@ -115,5 +118,6 @@ class PreTrainingDeducer:
                     
                     pred = self.to_pil(pred).convert('L').resize(raw_image.size)
                     pred.save(os.path.join(save_path, image_main_name + '.png'))
+                    pred.save(os.path.join(copy_path, image_main_name + '.png'))
 
         self.logger.info('Finish predicting it, enjoy everything')

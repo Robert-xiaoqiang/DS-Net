@@ -11,27 +11,33 @@ import os
 
 from .transforms.JointTransformer import JointCompose, JointResize, JointRandomHorizontallyFlip, JointRandomRotate
 
-class RGBDDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_root, train_size):
+class SemiRGBDDataset(torch.utils.data.Dataset):
+    def __init__(self, labeled_root, unlabeled_root, train_size):
         super().__init__()
-        self.data_list = self._make_list(dataset_root, [ 'RGB', 'depth', 'GT' ])
-        self.mean = np.array([0.447, 0.407, 0.386])
-        self.std = np.array([0.244, 0.250, 0.253])
+        self.labeled_list = self._make_list(labeled_root, [ 'RGB', 'depth' 'GT' ])
+        self.unlabeled_list = self._make_list(labeled_root, [ 'RGB', 'generated_depth' ])
+        self.mean = np.array([ 0.447, 0.407, 0.386 ])
+        self.std = np.array([ 0.244, 0.250, 0.253 ])
 
         self.joint_transform = JointCompose([
             JointResize(train_size),
             JointRandomHorizontallyFlip(),
             JointRandomRotate(10)
         ])
-        self.image_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(self.mean, self.std)
+        self.labeled_image_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std)
+            ])
+        self.unlabeled_image_transform = transforms.Compose([
+                transforms.ColorJitter(0.1, 0.1, 0.1)
+                transforms.ToTensor(),
+                transforms.Normalize(self.mean, self.std)
             ])
         self.depth_transform = transforms.ToTensor()
         self.mask_transform = transforms.ToTensor()
-    
+        
     def __len__(self):
-        return len(self.data_list)
+        return len(self.labeled_list) + len(self.unlabeled_list)
 
     def __getitem__(self, index):
         raise NotImplementedError
@@ -72,4 +78,7 @@ class RGBDDataset(torch.utils.data.Dataset):
 
         return [[ os.path.join(root, keys[i], main_file_name + exts[i]) 
                 for i in range(len(keys)) ]
-                for main_file_name in main_file_names]
+                for main_file_name in main_file_names ]
+
+    def get_primary_secondary_indices(self):
+        return np.arange(len(self.imgs)), np.arange(len(self.imgs), len(self.unlabeled_imgs))

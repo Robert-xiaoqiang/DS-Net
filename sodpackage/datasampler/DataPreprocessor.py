@@ -10,6 +10,13 @@ import numpy as np
 
 import random
 
+def _make_loader(dataset, shuffle=True, drop_last=False):
+    return DataLoaderX(dataset=dataset,
+                       batch_size=arg_config["batch_size"],
+                       num_workers=arg_config["num_workers"],
+                       shuffle=shuffle, drop_last=drop_last,
+                       pin_memory=True)
+
 class DataPreprocessor:
     def __init__(self, config):
         self.config = config
