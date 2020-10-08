@@ -5,6 +5,8 @@ from .TrainPreTrainingDataset import TrainPreTrainingDataset
 from .ValPreTrainingDataset import ValPreTrainingDataset
 from .TestPreTrainingDataset import TestPreTrainingDataset
 
+from prefetch_generator import BackgroundGenerator
+from torch.utils.data.sampler import Sampler
 from torch.utils.data import DataLoader
 import numpy as np
 
