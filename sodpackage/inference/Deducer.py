@@ -67,10 +67,10 @@ class Deducer:
     def load_checkpoint(self, snapshot_key = 'latest'):
         model_file_name = os.path.join(self.snapshot_path, 'model_{}.ckpt'.format(snapshot_key))
         if not os.path.isfile(model_file_name):
-            self.logger.info('Cannot find pretrained model checkpoint: ' + model_file_name)
+            self.logger.info('Cannot find suspended model checkpoint: ' + model_file_name)
             return False
         else:
-            self.logger.info('Find pretrained model checkpoint successfully: ' + model_file_name)
+            self.logger.info('Find suspended model checkpoint successfully: ' + model_file_name)
             map_location = (lambda storage, loc: storage) if self.main_device == 'cpu' else self.main_device
             params = torch.load(model_file_name, map_location = map_location)
             
