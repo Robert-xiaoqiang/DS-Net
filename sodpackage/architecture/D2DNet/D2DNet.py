@@ -171,7 +171,10 @@ class D2DNet(nn.Module):
         y = self.last_layer(adaptive_combination)
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
         sod_output = y
-        return sod_output, depth_output
+
+        output = sod_output if self.config.TRAIN.MTL_OUTPUT == 'single' else (sod_output, depth_output)
+        
+        return output
 
     def init_weights(self, pretrained_backbone = ''):
         pprint('=> init weights from Gaussion distribution')
@@ -182,7 +185,8 @@ class D2DNet(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-        pprint('=> init weights from Imagenet pretraining')
+        pprint('=> init weights from ImageNet pretraining')
+        pprint('=> init weights for encoder(rgb2depth)')
         self.rgb2depth.init_weights(pretrained_backbone)
         pprint('=> init weights for encoder(depth extraction)')
         self.depth_extraction_encoder.init_weights(pretrained_backbone)

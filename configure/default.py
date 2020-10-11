@@ -27,6 +27,7 @@ _C.MODEL.EXTRA = CN(new_allowed=True)
 
 # training
 _C.TRAIN = CN()
+_C.TRAIN.MTL_OUTPUT = 'single'
 _C.TRAIN.TRAINER = ''
 _C.TRAIN.DATASET = ''
 _C.TRAIN.DATASET_ROOT = ''

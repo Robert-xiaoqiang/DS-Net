@@ -57,5 +57,13 @@ class RGB2DepthNet(nn.Module):
         return x
 
     def init_weights(self, pretrained = ''):
+        pprint('=> init weights from Gaussion distribution')
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.normal_(m.weight, std=0.001)
+            elif isinstance(m, SynchronizedBatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+        pprint('=> init weights from ImageNet pretraining')
         pprint('=> init weights for encoder(rgb2depth)')
         self.encoder.init_weights(pretrained)

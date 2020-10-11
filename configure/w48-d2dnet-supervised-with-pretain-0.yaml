@@ -62,6 +62,7 @@ MODEL:
       - 384
       FUSE_METHOD: SUM
 TRAIN:
+  MTL_OUTPUT: multiple
   TRAINER: DASupervisedTrainer
   DATASET: TrainRGBDDataset
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'

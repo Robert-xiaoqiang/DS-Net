@@ -1,11 +1,13 @@
-NAME: 'w48-d2dnet-supervised-1'
-DEVICE: 'cuda:0,1'
+NAME: 'w48-d2dnet-supervised-with-pretain-single-0'
+DEVICE: 'cuda:0,1,2,3'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
 CUDNN:
   BENCHMARK: true
   DETERMINISTIC: false
   ENABLED: true
+PRETEXT:
+  PRETRAINED: '/home/xqwang/projects/saliency/dev/summary/w48-pretrain-1/snapshot/model_latest.ckpt'
 MODEL:
   NAME: D2DNet
   PRETRAINED: '/home/xqwang/projects/saliency/dev/pretrained/hrnetv2_w48_imagenet_pretrained.pth'
@@ -60,14 +62,13 @@ MODEL:
       - 384
       FUSE_METHOD: SUM
 TRAIN:
-  MTL_OUTPUT: multiple
-  TRAINER: DASupervisedTrainer
+  TRAINER: SupervisedTrainer
   DATASET: TrainRGBDDataset
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
   - 256
   - 256
-  BATCH_SIZE: 8
+  BATCH_SIZE: 16
   SHUFFLE: true
   NUM_EPOCHS: 900
   RESUME: true

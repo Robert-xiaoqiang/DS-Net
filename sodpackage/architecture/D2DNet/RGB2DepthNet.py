@@ -80,5 +80,4 @@ class RGB2DepthNet(nn.Module):
         return encoder_output, x
 
     def init_weights(self, pretrained = ''):
-        pprint('=> init weights for encoder(rgb2depth)')
         self.encoder.init_weights(pretrained)
