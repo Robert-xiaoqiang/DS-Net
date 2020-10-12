@@ -15,7 +15,7 @@ class SemiRGBDDataset(torch.utils.data.Dataset):
     def __init__(self, labeled_root, unlabeled_root, train_size):
         super().__init__()
         self.labeled_list = self._make_list(labeled_root, [ 'RGB', 'depth' 'GT' ])
-        self.unlabeled_list = self._make_list(labeled_root, [ 'RGB', 'generated_depth' ])
+        self.unlabeled_list = self._make_list(unlabeled_root, [ 'RGB', 'generated_depth' ])
         self.mean = np.array([ 0.447, 0.407, 0.386 ])
         self.std = np.array([ 0.244, 0.250, 0.253 ])
 
@@ -81,4 +81,4 @@ class SemiRGBDDataset(torch.utils.data.Dataset):
                 for main_file_name in main_file_names ]
 
     def get_primary_secondary_indices(self):
-        return np.arange(len(self.labeled_list)), np.arange(len(self.labeled_list), len(self.unlabeled_list))
+        return np.arange(len(self.labeled_list)), np.arange(len(self.labeled_list), len(self))

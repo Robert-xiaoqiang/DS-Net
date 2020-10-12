@@ -120,4 +120,4 @@ class PreTrainingDeducer:
                     pred.save(os.path.join(save_path, image_main_name + '.png'))
                     pred.save(os.path.join(copy_path, image_main_name + '.png'))
 
-        self.logger.info('Finish predicting it, enjoy everything')
+        self.logger.info('Finish predicting and copying it, enjoy everything')

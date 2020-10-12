@@ -1,9 +1,12 @@
 from .TrainRGBDDataset import TrainRGBDDataset
 from .TestRGBDDataset import TestRGBDDataset
 from .ValRGBDDataset import ValRGBDDataset
+
 from .TrainPreTrainingDataset import TrainPreTrainingDataset
 from .ValPreTrainingDataset import ValPreTrainingDataset
 from .TestPreTrainingDataset import TestPreTrainingDataset
+
+from .TrainSemiRGBDDataset import TrainSemiRGBDDataset
 
 from prefetch_generator import BackgroundGenerator
 from torch.utils.data.sampler import Sampler
@@ -41,17 +44,14 @@ class TwoStreamBatchSampler(Sampler):
     def __len__(self):
         return len(self.primary_indices) // self.primary_batch_size
 
-
 def iterate_once(iterable):
     return np.random.permutation(iterable)
-
 
 def iterate_eternally(indices):
     def infinite_shuffles():
         while True:
             yield np.random.permutation(indices)
     return itertools.chain.from_iterable(infinite_shuffles())
-
 
 def grouper(iterable, n):
     "Collect data into fixed-length chunks or blocks"
@@ -75,18 +75,30 @@ class DataPreprocessor:
         ValDataset = eval(self.config.VAL.DATASET)
         TestDataset = eval(self.config.TEST.DATASET)
 
-        # instantiate
-        self.train_dataset = TrainDataset(self.config.TRAIN.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
-        self.val_dataset = ValDataset(self.config.VAL.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
+        # instantiate and wrap loader
+        if TrainDataset == TrainSemiRGBDDataset:
+            self.train_dataset = TrainDataset(self.config.TRAIN.DATASET_ROOT, self.config.TRAIN.UNLABELED.DATASET_ROOT self.config.TRAIN.TRAIN_SIZE)
+            primary_indices, secondary_indices = self.train_dataset.get_primary_secondary_indices()
+            train_batch_sampler = TwoStreamBatchSampler(primary_indices,
+                                                        secondary_indices,
+                                                        self.config.TRAIN.BATCH_SIZE,
+                                                        self.config.TRAIN.UNLABELED.BATCH_SIZE)
+            self.train_dataloader = DataLoaderX(self.train_dataset,
+                                                batch_sampler = train_batch_sampler,
+                                                num_workers = self.config.TRAIN.WORKERS,
+                                                pin_memory = True)
+        else:
+            self.train_dataset = TrainDataset(self.config.TRAIN.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
+            self.train_dataloader = DataLoaderX(self.train_dataset,
+                                                batch_size = self.config.TRAIN.BATCH_SIZE,
+                                                num_workers = self.config.TRAIN.WORKERS,
+                                                pin_memory = True,
+                                                shuffle = self.config.TRAIN.SHUFFLE,
+                                                drop_last = True,
+                                                worker_init_fn = lambda wid: random.seed(self.config.SEED + wid))
 
-        self.train_dataloader = DataLoaderX(self.train_dataset,
-                                            batch_size = self.config.TRAIN.BATCH_SIZE,
-                                            num_workers = self.config.TRAIN.WORKERS,
-                                            pin_memory = True,
-                                            shuffle = self.config.TRAIN.SHUFFLE,
-                                            drop_last = True,
-                                            worker_init_fn = lambda wid: random.seed(self.config.SEED + wid))
         # without shuffle and drop last
+        self.val_dataset = ValDataset(self.config.VAL.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
         self.val_dataloader = DataLoaderX(self.val_dataset,
                                         batch_size = self.config.TRAIN.BATCH_SIZE,
                                         num_workers = self.config.TRAIN.WORKERS,
