@@ -63,7 +63,7 @@ MODEL:
       FUSE_METHOD: SUM
 TRAIN:
   MTL_OUTPUT: multiple
-  TRAINER: DASupervisedTrainer
+  TRAINER: MTSupervisedTrainer
   DATASET: TrainRGBDDataset
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:

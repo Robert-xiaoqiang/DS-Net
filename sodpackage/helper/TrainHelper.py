@@ -416,6 +416,36 @@ class PreTrainingFullModel(nn.Module):
     # here convert to scalar to 1-d tensor for reduce/gather operation
     return torch.unsqueeze(loss, 0), outputs
 
+class MTFullModel(nn.Module):
+    def __init__(self, model, loss):
+        self.model = model
+        self.loss = loss
+
+    def forward(self, rgb_inputs, depth_inputs, labels, unlabeled_ema_outputs, lb):
+        # [sod_outputs, depth_outputs]
+        batch_outputs = self.model(rgb_inputs, depth_inputs)
+        supervised_loss = self.loss[0](batch_outputs[0][:lb], labels[:lb])
+        sod_consistency = self.loss[1](batch_outputs[0][lb:], unlabeled_ema_outputs[0][lb:])
+        depth_consistency = self.loss[2](batch_outputs[1][lb:], unlabeled_ema_outputs[1][lb:])
+        consistency_loss = sod_consistency + depth_consistency
+
+        return torch.unsqueeze(supervised_loss, 0), torch.unsqueeze(consistency_loss, 0), \
+               batch_outputs[0], batch_outputs[1]
+
+class MTFakeFullModel(nn.Module):
+    '''
+        make attributes for ema param.mul_().add_()
+        e.g. self.module.model.*
+    '''
+    def __init__(self, model):
+        self.model = model
+        self.loss = None
+
+    def forward(self, rgb_inputs, depth_inputs):
+        # [sod_outputs, depth_outputs]
+        batch_outputs = self.model(rgb_inputs, depth_inputs)
+        return batch_outputs
+
 class DiceFullModel(nn.Module):
   def __init__(self, model, loss):
     super().__init__()

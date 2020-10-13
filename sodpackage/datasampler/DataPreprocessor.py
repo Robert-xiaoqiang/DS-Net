@@ -77,7 +77,7 @@ class DataPreprocessor:
 
         # instantiate and wrap loader
         if TrainDataset == TrainSemiRGBDDataset:
-            self.train_dataset = TrainDataset(self.config.TRAIN.DATASET_ROOT, self.config.TRAIN.UNLABELED.DATASET_ROOT self.config.TRAIN.TRAIN_SIZE)
+            self.train_dataset = TrainDataset(self.config.TRAIN.DATASET_ROOT, self.config.TRAIN.UNLABELED.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
             primary_indices, secondary_indices = self.train_dataset.get_primary_secondary_indices()
             train_batch_sampler = TwoStreamBatchSampler(primary_indices,
                                                         secondary_indices,

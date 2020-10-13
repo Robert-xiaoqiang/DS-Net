@@ -29,7 +29,7 @@ class SemiRGBDDataset(torch.utils.data.Dataset):
                 transforms.Normalize(self.mean, self.std)
             ])
         self.unlabeled_image_transform = transforms.Compose([
-                transforms.ColorJitter(0.1, 0.1, 0.1)
+                transforms.ColorJitter(0.1, 0.1, 0.1),
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean, self.std)
             ])
