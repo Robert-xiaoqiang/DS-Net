@@ -113,7 +113,8 @@ class MTSemiSupervisedTrainer(SupervisedTrainer):
             = self.build_data(batch_data)
             lb = self.config.TRAIN.BATCH_SIZE - self.config.TRAIN.UNLABELED.BATCH_SIZE
             unlabeled_ema_output = self.ema_model(batch_rgb[lb:], batch_depth[lb:])
-            supervised_losses, consistency_losses, *output = self.model(batch_rgb, batch_depth, batch_label, unlabeled_ema_output, lb)
+            lb_within_card = lb // len(self.wrapped_device)
+            supervised_losses, consistency_losses, *output = self.model(batch_rgb, batch_depth, batch_label, unlabeled_ema_output, lb_within_card)
             # here loss is gathered from each rank, mean/sum it to scalar
             if self.config.TRAIN.REDUCTION == 'mean':
                 supervised_loss = supervised_losses.mean()

@@ -86,7 +86,7 @@ TRAIN:
   REDUCTION: mean
   UNLABELED:
     DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/DUTS-TR' 
-    BATCH_SIZE: 8
+    BATCH_SIZE: 4
     EMA_DECAY: 0.99
     CONSISTENCY: 1.0
     CONSISTENCY_RAMPUP: 200
