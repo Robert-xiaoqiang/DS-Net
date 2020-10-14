@@ -35,7 +35,7 @@ class TrainSemiRGBDDataset(SemiRGBDDataset):
             image = Image.open(image_path).convert('RGB')
             depth = Image.open(depth_path).convert('L')
 
-            image, depth, mask = self.joint_transform(image, depth, mask)
+            image, depth = self.joint_transform(image, depth)
             image = self.unlabeled_image_transform(image)
             depth = self.depth_transform(depth)
             # here cpu float tensor, dataloader is just on cpu before being feeded into model

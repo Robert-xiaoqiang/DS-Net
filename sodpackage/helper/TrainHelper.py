@@ -418,19 +418,25 @@ class PreTrainingFullModel(nn.Module):
 
 class MTFullModel(nn.Module):
     def __init__(self, model, loss):
+        super().__init__()
         self.model = model
         self.loss = loss
 
-    def forward(self, rgb_inputs, depth_inputs, labels, unlabeled_ema_outputs, lb):
+    def forward(self, rgb_inputs, depth_inputs, labels, unlabeled_ema_outputs, lb, is_train = True):
         # [sod_outputs, depth_outputs]
         batch_outputs = self.model(rgb_inputs, depth_inputs)
-        supervised_loss = self.loss[0](batch_outputs[0][:lb], labels[:lb])
-        sod_consistency = self.loss[1](batch_outputs[0][lb:], unlabeled_ema_outputs[0][lb:])
-        depth_consistency = self.loss[2](batch_outputs[1][lb:], unlabeled_ema_outputs[1][lb:])
-        consistency_loss = sod_consistency + depth_consistency
+        if is_train:
+            supervised_loss = self.loss[0](batch_outputs[0][:lb], labels[:lb])
+            sod_consistency = self.loss[1](batch_outputs[0][lb:], unlabeled_ema_outputs[0])
+            depth_consistency = self.loss[2](batch_outputs[1][lb:], unlabeled_ema_outputs[1])
+            consistency_loss = sod_consistency + depth_consistency
 
-        return torch.unsqueeze(supervised_loss, 0), torch.unsqueeze(consistency_loss, 0), \
-               batch_outputs[0], batch_outputs[1]
+            return torch.unsqueeze(supervised_loss, 0), torch.unsqueeze(consistency_loss, 0), \
+                   batch_outputs[0], batch_outputs[1]
+        else:
+            # when validating, we have no unlabeled data, different loss computation !!!!
+            supervised_loss = self.loss[0](batch_outputs[0], labels)
+            return torch.unsqueeze(supervised_loss, 0), batch_outputs[0], batch_outputs[1]
 
 class MTFakeFullModel(nn.Module):
     '''
@@ -438,6 +444,7 @@ class MTFakeFullModel(nn.Module):
         e.g. self.module.model.*
     '''
     def __init__(self, model):
+        super().__init__()
         self.model = model
         self.loss = None
 

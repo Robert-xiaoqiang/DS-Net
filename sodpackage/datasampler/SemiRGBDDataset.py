@@ -14,7 +14,7 @@ from .transforms.JointTransformer import JointCompose, JointResize, JointRandomH
 class SemiRGBDDataset(torch.utils.data.Dataset):
     def __init__(self, labeled_root, unlabeled_root, train_size):
         super().__init__()
-        self.labeled_list = self._make_list(labeled_root, [ 'RGB', 'depth' 'GT' ])
+        self.labeled_list = self._make_list(labeled_root, [ 'RGB', 'depth', 'GT' ])
         self.unlabeled_list = self._make_list(unlabeled_root, [ 'RGB', 'generated_depth' ])
         self.mean = np.array([ 0.447, 0.407, 0.386 ])
         self.std = np.array([ 0.244, 0.250, 0.253 ])

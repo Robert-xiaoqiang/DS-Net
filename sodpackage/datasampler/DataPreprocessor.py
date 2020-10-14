@@ -14,6 +14,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 
 import random
+import itertools
 
 class TwoStreamBatchSampler(Sampler):
     """Iterate two sets of indices
