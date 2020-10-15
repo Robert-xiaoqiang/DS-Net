@@ -1,4 +1,4 @@
-NAME: 'w48-d2dnet-semi-with-pretain-0'
+NAME: 'w48-d2dnet-semi-with-pretain-single-0'
 DEVICE: 'cuda:0,1,2,3'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'

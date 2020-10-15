@@ -195,15 +195,13 @@ class MTSemiSupervisedTrainer(SupervisedTrainer):
             with torch.no_grad():
                 batch_rgb, batch_depth, batch_label, batch_mask_path, batch_key, \
                 = self.build_data(batch_data)
-                sod_losses, depth_losses, *output = self.model(batch_rgb, batch_depth, batch_label)
+                sod_losses, *output = self.model(batch_rgb, batch_depth, batch_label, None, None, is_train = False)
             
             if self.config.TRAIN.REDUCTION == 'mean':
                 sod_loss = sod_losses.mean()
-                depth_loss = depth_losses.mean()
             else:
                 sod_loss = sod_losses.sum()
-                depth_loss = depth_losses.sum()
-            loss = sod_loss + depth_loss
+            loss = sod_loss
             # sod output as final output
             output = output[0]
 
