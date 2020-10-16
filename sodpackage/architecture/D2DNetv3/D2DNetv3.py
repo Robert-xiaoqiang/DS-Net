@@ -82,14 +82,14 @@ class DepthCorrelationModule(nn.Module):
         lhs = self.depth_lhs_encoder(depth_feature)
         rhs = self.depth_rhs_encoder(depth_feature)
 
-        transposed_x = x.transpose(0, 2, 3, 1).view(-1, C)
-        lhs = lhs.transpose(0, 2, 3, 1).view(-1, C)
-        rhs = rhs.transpose(0, 2, 3, 1).view(-1, C)
+        transposed_x = x.permute(0, 2, 3, 1).reshape(-1, C)
+        lhs = lhs.permute(0, 2, 3, 1).reshape(-1, C)
+        rhs = rhs.permute(0, 2, 3, 1).reshape(-1, C)
         # BHW * BHW inner-product similarity
         logits = torch.matmul(lhs, rhs.T)
         # row posterior/weight/relation normalization
         weight = F.softmax(logits, dim = 1)
-        y = torch.matmul(weight, transposed_x).view(B, H, W, C).transpose(0, 3, 1, 2)
+        y = torch.matmul(weight, transposed_x).view(B, H, W, C).permute(0, 3, 1, 2)
 
         return y
 
@@ -99,10 +99,10 @@ class DepthGatedModule(nn.Module):
         self.inplanes = inplanes
         self.encoder = nn.Conv2d(self.inplanes * 2, self.inplanes, 1, stride = 1, padding = 0)
         self.decoder = nn.Sequential(
-            nn.Conv2d(self.inplanes, self.inplanes, 1, stride = 1, padding = 0),
-            BatchNorm2d(self.inplanes),
+            nn.Conv2d(self.inplanes, self.inplanes // 4, 1, stride = 1, padding = 0),
+            BatchNorm2d(self.inplanes // 4),
             nn.ReLU(inplace = True),
-            nn.Conv2d(self.inplanes, 1, 1, stride = 1, padding = 0),
+            nn.Conv2d(self.inplanes // 4, 1, 1, stride = 1, padding = 0),
             nn.Sigmoid()
         )
 
@@ -119,7 +119,7 @@ class ComplementaryGatedFusion(nn.Module):
         self.ns = len(self.muitl_scale_inplanes)
         self.dams = nn.ModuleList([ DepthAwarenessModule(p, p) for p in self.muitl_scale_inplanes ])
         self.dcms = nn.ModuleList([ DepthCorrelationModule(p, p) for p in self.muitl_scale_inplanes ])
-        self.dgms = nn.ModuleList([ DepthGatedModule(p, p) for p in self.muitl_scale_inplanes ])
+        self.dgms = nn.ModuleList([ DepthGatedModule(p) for p in self.muitl_scale_inplanes ])
     
     def forward(self, from_depth_estimation, from_rgb, from_depth_extraction):
         # main
@@ -220,7 +220,7 @@ class D2DNetv3(nn.Module):
     def forward(self, rgb, depth):
         ori_h, ori_w = rgb.shape[2], rgb.shape[3]
         # list of features
-        common_encoder_feature, from_depth_estimation, depth_output0 = self.rgb2depth(rgb)
+        common_encoder_feature, from_depth_estimation, depth_output = self.rgb2depth(rgb)
         depth_extraction_feature = self.depth_extraction_encoder(depth)
 
         from_rgb = self.rgb_subnet(common_encoder_feature)
@@ -228,7 +228,7 @@ class D2DNetv3(nn.Module):
         
         adaptive_combination = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
         
-        adaptive_combination = D2DNetv2.merge(adaptive_combination)
+        adaptive_combination = D2DNetv3.merge(adaptive_combination)
         y = self.last_layer(adaptive_combination)
 
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
