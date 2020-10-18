@@ -121,7 +121,7 @@ class ComplementaryGatedFusion(nn.Module):
         self.dcms = nn.ModuleList([ DepthCorrelationModule(p, p) for p in self.multi_scale_inplanes ])
         self.dgms = nn.ModuleList([ DepthGatedModule(p) for p in self.multi_scale_inplanes ])
 
-        self.decoders = nn.Module([
+        self.decoders = nn.ModuleList([
             nn.Sequential(
                 nn.Conv2d(3 * p, 2 * p, 1, stride = 1, padding = 0),
                 BatchNorm2d(2 * p),
@@ -210,7 +210,8 @@ class D2DNetv4(nn.Module):
                 stride=1,
                 padding=0),
             BatchNorm2d(sum_last_stage_channels, momentum=BN_MOMENTUM),
-            nn.ReLU(inplace=False),
+            nn.ReLU(inplace = True),
+            nn.Dropout(p = 0.2),
             nn.Conv2d(
                 in_channels=sum_last_stage_channels,
                 out_channels=1,
@@ -242,7 +243,7 @@ class D2DNetv4(nn.Module):
         
         adaptive_combination = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
         
-        adaptive_combination = D2DNetv3.merge(adaptive_combination)
+        adaptive_combination = D2DNetv4.merge(adaptive_combination)
         y = self.last_layer(adaptive_combination)
 
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
