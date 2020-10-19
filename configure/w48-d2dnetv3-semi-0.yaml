@@ -1,15 +1,15 @@
-NAME: 'w48-d2dnet-semi-with-pretain-single-0'
-DEVICE: 'cuda:0,1,2,3'
+NAME: 'w48-d2dnetv3-semi-0'
+DEVICE: 'cuda:0,1'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
 CUDNN:
   BENCHMARK: true
   DETERMINISTIC: false
   ENABLED: true
-PRETEXT:
-  PRETRAINED: '/home/xqwang/projects/saliency/dev/summary/w48-pretrain-1/snapshot/model_best.ckpt'
+# PRETEXT:
+#   PRETRAINED: '/home/xqwang/projects/saliency/dev/summary/w48-pretrain-1/snapshot/model_best.ckpt'
 MODEL:
-  NAME: D2DNet
+  NAME: D2DNetv3
   PRETRAINED: '/home/xqwang/projects/saliency/dev/pretrained/hrnetv2_w48_imagenet_pretrained.pth'
   EXTRA:
     FINAL_CONV_KERNEL: 1
@@ -71,7 +71,7 @@ TRAIN:
   - 256
   BATCH_SIZE: 4
   SHUFFLE: true
-  NUM_EPOCHS: 900
+  NUM_EPOCHS: 400
   RESUME: true
   WORKERS: 4
   LOSS_FREQ: 10
@@ -86,7 +86,7 @@ TRAIN:
   REDUCTION: mean
   UNLABELED:
     DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/DUTS-TR' 
-    BATCH_SIZE: 4
+    BATCH_SIZE: 2
     EMA_DECAY: 0.99
     CONSISTENCY: 1.0
     CONSISTENCY_RAMPUP: 200
@@ -104,5 +104,5 @@ TEST:
   - LFSD: '/home/xqwang/projects/saliency/datasets-fdp/LFSD'
   - STERE: '/home/xqwang/projects/saliency/datasets-fdp/STERE'
   - DUT-RGBD: '/home/xqwang/projects/saliency/datasets-fdp/DUT-RGBD/test_data'
-  BATCH_SIZE: 32
+  BATCH_SIZE: 8
   WORKERS: 8

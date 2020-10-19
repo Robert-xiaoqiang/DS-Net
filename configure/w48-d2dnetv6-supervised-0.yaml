@@ -1,15 +1,13 @@
-NAME: 'w48-d2dnet-semi-with-pretain-single-0'
-DEVICE: 'cuda:0,1,2,3'
+NAME: 'w48-d2dnetv6-supervised-0'
+DEVICE: 'cuda:0,1'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
 CUDNN:
   BENCHMARK: true
   DETERMINISTIC: false
   ENABLED: true
-PRETEXT:
-  PRETRAINED: '/home/xqwang/projects/saliency/dev/summary/w48-pretrain-1/snapshot/model_best.ckpt'
 MODEL:
-  NAME: D2DNet
+  NAME: D2DNetv6
   PRETRAINED: '/home/xqwang/projects/saliency/dev/pretrained/hrnetv2_w48_imagenet_pretrained.pth'
   EXTRA:
     FINAL_CONV_KERNEL: 1
@@ -63,8 +61,8 @@ MODEL:
       FUSE_METHOD: SUM
 TRAIN:
   MTL_OUTPUT: multiple
-  TRAINER: MTSemiSupervisedTrainer
-  DATASET: TrainSemiRGBDDataset
+  TRAINER: DASupervisedTrainer
+  DATASET: TrainRGBDDataset
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
   - 256
@@ -84,12 +82,6 @@ TRAIN:
   MOMENTUM: 0.9
   NESTEROV: false
   REDUCTION: mean
-  UNLABELED:
-    DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/DUTS-TR' 
-    BATCH_SIZE: 4
-    EMA_DECAY: 0.99
-    CONSISTENCY: 1.0
-    CONSISTENCY_RAMPUP: 200
 VAL:
   DATASET: ValRGBDDataset
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/VAL'

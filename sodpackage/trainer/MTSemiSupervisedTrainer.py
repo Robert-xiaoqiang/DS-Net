@@ -59,9 +59,11 @@ class MTSemiSupervisedTrainer(SupervisedTrainer):
     def build_criterion(self):
         # later `to operation` within fullmodel
         # sod loss for labeled
+        # depth loss for labeled
         # sod loss for unlabeled
         # depth loss for unlabeled
         criterion = [ nn.BCELoss(reduction=self.config.TRAIN.REDUCTION),
+                      BerhuLoss(reduction = self.config.TRAIN.REDUCTION),
                       nn.MSELoss(reduction=self.config.TRAIN.REDUCTION),
                       nn.MSELoss(reduction=self.config.TRAIN.REDUCTION)
                     ]
@@ -124,7 +126,6 @@ class MTSemiSupervisedTrainer(SupervisedTrainer):
                 consistency_loss = consistency_losses.sum()
     
             self.on_batch_end(output, unlabeled_ema_output, batch_label, supervised_loss, consistency_loss, epoch, batch_index)
-
 
     def on_batch_end(self, output, unlabeled_ema_output, batch_label,
                      supervised_loss, consistency_loss,
