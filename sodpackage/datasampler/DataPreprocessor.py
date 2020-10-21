@@ -104,6 +104,7 @@ class DataPreprocessor:
                                         batch_size = self.config.TRAIN.BATCH_SIZE,
                                         num_workers = self.config.TRAIN.WORKERS,
                                         pin_memory = True,
+                                        drop_last = True,
                                         worker_init_fn = lambda wid: random.seed(self.config.SEED + wid))
         self.test_dataloaders = { }
 
