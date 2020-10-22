@@ -169,7 +169,58 @@ class MSDecoderSubnet(nn.Module):
         assert len(x) == self.ns, 'please make sure multi-scale output'
         return [ self.layers[i](x[i]) for i in range(self.ns) ]
 
-class D2DNetv3(nn.Module):
+class DecoderReconstructor(nn.Module):
+    def __init__(self, inplanes):
+        super().__init__()
+        self.inplanes = inplanes
+        self.layer = nn.Sequential(
+            nn.Conv2d(
+                in_channels=self.inplanes,
+                out_channels=self.inplanes,
+                kernel_size=3,
+                stride=1,
+                padding=1),
+            BatchNorm2d(self.inplanes, momentum=BN_MOMENTUM),
+            nn.ReLU(inplace=False)
+        )
+    def forward(self, x):
+        y = self.layer(x)
+
+        return y
+
+class MSDecoderReconstructor(nn.Module):
+    def __init__(self, muitl_scale_inplanes):
+        super().__init__()
+        # list channels
+        self.muitl_scale_inplanes = muitl_scale_inplanes
+        self.ns = len(self.muitl_scale_inplanes)
+        self.layers = nn.ModuleList([ DecoderReconstructor(p) for p in self.muitl_scale_inplanes ])
+
+    def forward(self, x):
+        assert len(x) == self.ns, 'please make sure multi-scale output'
+        return [ self.layers[i](x[i]) for i in range(self.ns) ]
+
+class DisentangleLoss(nn.Module):
+    def __init__(self, inplanes):
+        super().__init__()
+        self.inplanes = inplanes
+        self.loss = nn.MSELoss(reduction = 'mean')
+
+    def forward(self, d0, d1):
+        assert d0.shape == d1.shape, 'different shape in DisentangleLoss'
+        softmax_d0 = F.softmax(d0, dim = 1)
+        softmax_d1 = F.softmax(d1, dim = 1)
+
+        ret = self.loss(softmax_d0, softmax_d1)
+        return ret
+
+class MSDisentangleLoss:
+    pass
+
+class DistangleModule:
+    pass
+
+class D2DNetv7(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -227,7 +278,7 @@ class D2DNetv3(nn.Module):
         
         adaptive_combination = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
         
-        adaptive_combination = D2DNetv3.merge(adaptive_combination)
+        adaptive_combination = D2DNetv7.merge(adaptive_combination)
         y = self.last_layer(adaptive_combination)
 
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
