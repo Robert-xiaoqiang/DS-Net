@@ -59,7 +59,7 @@ class DADisentangleSupervisedTrainer(SupervisedTrainer):
                      sod_loss, depth_loss, reconstruct_loss,
                      epoch, batch_index):
         
-        loss = sod_loss + depth_loss + 1.81E-5 * reconstruct_loss
+        loss = sod_loss + depth_loss + 1.0 * reconstruct_loss
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -94,7 +94,7 @@ class DADisentangleSupervisedTrainer(SupervisedTrainer):
         self.writer.add_image('train/depth_preds', tr_tb_out_2, iteration)
 
     def summary_loss(self, loss, sod_loss, depth_loss, reconstruct_loss, epoch, iteration):
-        self.logger.info('[epoch {}/{} - iteration {}/{}]: loss(cur): {:.4f} = [{:.4f}+{:.4f}+1.81E-5*{:.4f}], loss(avg): {:.4f}, lr: {:.8f}'\
+        self.logger.info('[epoch {}/{} - iteration {}/{}]: loss(cur): {:.4f} = [{:.4f}+{:.4f}+1.0*{:.4f}], loss(avg): {:.4f}, lr: {:.8f}'\
                 .format(epoch, self.num_epochs, iteration, self.num_iterations, \
                 loss.item(), sod_loss.item(), depth_loss.item(), reconstruct_loss.item(), \
                 self.loss_avg_meter.average(), self.optimizer.param_groups[0]['lr']))

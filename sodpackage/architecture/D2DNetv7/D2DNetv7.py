@@ -215,11 +215,10 @@ class DisentangleLoss(nn.Module):
 
     def forward(self, reconstructed, original):
         assert reconstructed.shape == original.shape, 'different shape in DisentangleLoss'
-        # softmax_reconstructed = F.softmax(reconstructed, dim = 1)
-        # softmax_original = F.softmax(original, dim = 1)
+        softmax_reconstructed = F.softmax(reconstructed, dim = 1)
+        softmax_original = F.softmax(original, dim = 1)
 
-        # ret = self.loss(softmax_reconstructed, softmax_original)
-        ret = self.loss(d0, d1)
+        ret = self.loss(softmax_reconstructed, softmax_original)
         return ret
 
 class MSDisentangleLoss(nn.Module):
@@ -228,12 +227,17 @@ class MSDisentangleLoss(nn.Module):
         # list channels
         self.multi_scale_inplanes = multi_scale_inplanes
         self.ns = len(self.multi_scale_inplanes)
-        self.layers = nn.ModuleList([ DisentangleLoss() for _ in range(self.ns) ])
+        self.layers = nn.ModuleList([ nn.MSELoss(reduction = 'mean') for _ in range(self.ns) ])
 
     def forward(self, reconstructed, original):
         assert len(reconstructed) == len(original) == self.ns, 'please make sure multi-scale output'
+        
+        # reconstruction(loss) of 4 different scales
         loss = [ self.layers[i](reconstructed[i], original[i]) for i in range(self.ns) ]
-        return sum(loss) * 0.25
+        # sum the list of losses for every input RGB image
+        y = sum(loss)
+
+        return y
 
 class D2DNetv7(nn.Module):
     def __init__(self, config):
