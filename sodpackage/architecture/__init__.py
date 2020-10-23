@@ -1,5 +1,6 @@
 from . import MRFNet, MSMRFNet, DAMRFNet, \
-RGB2DepthNet, D2DNet, D2DNetv2, D2DNetv3, D2DNetv4, D2DNetv5, D2DNetv6
+RGB2DepthNet, D2DNet, D2DNetv2, D2DNetv3, D2DNetv4, D2DNetv5, D2DNetv6, \
+D2DNetv7
 
 # print(locals())
 def get_model(cfg):

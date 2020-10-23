@@ -112,13 +112,13 @@ class DepthGatedModule(nn.Module):
         return y
 
 class ComplementaryGatedFusion(nn.Module):
-    def __init__(self, muitl_scale_inplanes):
+    def __init__(self, multi_scale_inplanes):
         super().__init__()
-        self.muitl_scale_inplanes = muitl_scale_inplanes
-        self.ns = len(self.muitl_scale_inplanes)
-        self.dams = nn.ModuleList([ DepthAwarenessModule(p, p) for p in self.muitl_scale_inplanes ])
-        self.dcms = nn.ModuleList([ DepthCorrelationModule(p, p) for p in self.muitl_scale_inplanes ])
-        self.dgms = nn.ModuleList([ DepthGatedModule(p) for p in self.muitl_scale_inplanes ])
+        self.multi_scale_inplanes = multi_scale_inplanes
+        self.ns = len(self.multi_scale_inplanes)
+        self.dams = nn.ModuleList([ DepthAwarenessModule(p, p) for p in self.multi_scale_inplanes ])
+        self.dcms = nn.ModuleList([ DepthCorrelationModule(p, p) for p in self.multi_scale_inplanes ])
+        self.dgms = nn.ModuleList([ DepthGatedModule(p) for p in self.multi_scale_inplanes ])
     
     def forward(self, from_depth_estimation, from_rgb, from_depth_extraction):
         # main
@@ -158,12 +158,12 @@ class DecoderSubnet(nn.Module):
         return y
 
 class MSDecoderSubnet(nn.Module):
-    def __init__(self, muitl_scale_inplanes):
+    def __init__(self, multi_scale_inplanes):
         super().__init__()
         # list channels
-        self.muitl_scale_inplanes = muitl_scale_inplanes
-        self.ns = len(self.muitl_scale_inplanes)
-        self.layers = nn.ModuleList([ DecoderSubnet(p) for p in self.muitl_scale_inplanes ])
+        self.multi_scale_inplanes = multi_scale_inplanes
+        self.ns = len(self.multi_scale_inplanes)
+        self.layers = nn.ModuleList([ DecoderSubnet(p) for p in self.multi_scale_inplanes ])
 
     def forward(self, x):
         assert len(x) == self.ns, 'please make sure multi-scale output'
@@ -173,15 +173,22 @@ class DecoderReconstructor(nn.Module):
     def __init__(self, inplanes):
         super().__init__()
         self.inplanes = inplanes
+        self.outplanes = inplanes // 2
         self.layer = nn.Sequential(
             nn.Conv2d(
                 in_channels=self.inplanes,
-                out_channels=self.inplanes,
+                out_channels=self.outplanes,
                 kernel_size=3,
                 stride=1,
                 padding=1),
-            BatchNorm2d(self.inplanes, momentum=BN_MOMENTUM),
-            nn.ReLU(inplace=False)
+            BatchNorm2d(self.outplanes, momentum=BN_MOMENTUM),
+            nn.ReLU(inplace=False),
+            nn.Conv2d(
+                in_channels=self.outplanes,
+                out_channels=self.outplanes,
+                kernel_size=3,
+                stride=1,
+                padding=1)
         )
     def forward(self, x):
         y = self.layer(x)
@@ -189,36 +196,44 @@ class DecoderReconstructor(nn.Module):
         return y
 
 class MSDecoderReconstructor(nn.Module):
-    def __init__(self, muitl_scale_inplanes):
+    def __init__(self, multi_scale_inplanes):
         super().__init__()
         # list channels
-        self.muitl_scale_inplanes = muitl_scale_inplanes
-        self.ns = len(self.muitl_scale_inplanes)
-        self.layers = nn.ModuleList([ DecoderReconstructor(p) for p in self.muitl_scale_inplanes ])
+        self.multi_scale_inplanes = multi_scale_inplanes
+        self.ns = len(self.multi_scale_inplanes)
+        self.layers = nn.ModuleList([ DecoderReconstructor(p) for p in self.multi_scale_inplanes ])
 
     def forward(self, x):
         assert len(x) == self.ns, 'please make sure multi-scale output'
-        return [ self.layers[i](x[i]) for i in range(self.ns) ]
+        y = [ self.layers[i](x[i]) for i in range(self.ns) ]
+        return y
 
 class DisentangleLoss(nn.Module):
-    def __init__(self, inplanes):
+    def __init__(self):
         super().__init__()
-        self.inplanes = inplanes
         self.loss = nn.MSELoss(reduction = 'mean')
 
-    def forward(self, d0, d1):
-        assert d0.shape == d1.shape, 'different shape in DisentangleLoss'
-        softmax_d0 = F.softmax(d0, dim = 1)
-        softmax_d1 = F.softmax(d1, dim = 1)
+    def forward(self, reconstructed, original):
+        assert reconstructed.shape == original.shape, 'different shape in DisentangleLoss'
+        # softmax_reconstructed = F.softmax(reconstructed, dim = 1)
+        # softmax_original = F.softmax(original, dim = 1)
 
-        ret = self.loss(softmax_d0, softmax_d1)
+        # ret = self.loss(softmax_reconstructed, softmax_original)
+        ret = self.loss(d0, d1)
         return ret
 
-class MSDisentangleLoss:
-    pass
+class MSDisentangleLoss(nn.Module):
+    def __init__(self, multi_scale_inplanes):
+        super().__init__()
+        # list channels
+        self.multi_scale_inplanes = multi_scale_inplanes
+        self.ns = len(self.multi_scale_inplanes)
+        self.layers = nn.ModuleList([ DisentangleLoss() for _ in range(self.ns) ])
 
-class DistangleModule:
-    pass
+    def forward(self, reconstructed, original):
+        assert len(reconstructed) == len(original) == self.ns, 'please make sure multi-scale output'
+        loss = [ self.layers[i](reconstructed[i], original[i]) for i in range(self.ns) ]
+        return sum(loss) * 0.25
 
 class D2DNetv7(nn.Module):
     def __init__(self, config):
@@ -229,13 +244,15 @@ class D2DNetv7(nn.Module):
         self.rgb2depth = RGB2DepthNet(self.config)
         last_stage_channels = self.rgb2depth.last_stage_channels
         sum_last_stage_channels = self.rgb2depth.sum_last_stage_channels
+        self.ns = len(last_stage_channels)
 
-        # self.depth_estimation_subnet = MSDecoderSubnet(last_stage_channels)
         self.rgb_subnet = MSDecoderSubnet(last_stage_channels)
         self.depth_estimation_subnet = MSDecoderSubnet(last_stage_channels)
 
+        self.disentangle_reconstructor = MSDecoderReconstructor(list(map(lambda x: 2*x, last_stage_channels)))
+        self.disentangle_loss = MSDisentangleLoss(last_stage_channels)
+
         self.depth_extraction_encoder = Backbone(self.config, 1)
-        
         self.cgf = ComplementaryGatedFusion(last_stage_channels)
 
         self.last_layer = nn.Sequential(
@@ -271,11 +288,15 @@ class D2DNetv7(nn.Module):
         ori_h, ori_w = rgb.shape[2], rgb.shape[3]
         # list of features
         common_encoder_feature, from_depth_estimation, depth_output = self.rgb2depth(rgb)
-        depth_extraction_feature = self.depth_extraction_encoder(depth)
-
         from_rgb = self.rgb_subnet(common_encoder_feature)
-        from_depth_extraction = depth_extraction_feature # subnet ????
-        
+
+        disentangled_feature = [ torch.cat([ from_rgb[i], from_depth_estimation[i] ], dim = 1) for i in range(self.ns) ]
+        reconstructed_feature = self.disentangle_reconstructor(disentangled_feature)
+        reconstruct_loss = self.disentangle_loss(reconstructed_feature, common_encoder_feature)
+
+        depth_extraction_feature = self.depth_extraction_encoder(depth)
+        from_depth_extraction = depth_extraction_feature # depth_extraction subnet ????
+
         adaptive_combination = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
         
         adaptive_combination = D2DNetv7.merge(adaptive_combination)
@@ -284,7 +305,7 @@ class D2DNetv7(nn.Module):
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
         sod_output = y
 
-        output = sod_output if self.config.TRAIN.MTL_OUTPUT == 'single' else (sod_output, depth_output)
+        output = sod_output if self.config.TRAIN.MTL_OUTPUT == 'single' else (sod_output, depth_output, reconstruct_loss)
         
         return output
 

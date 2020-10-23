@@ -490,6 +490,23 @@ class DAFullModel(nn.Module):
     # here convert to scalar to 1-d tensor for reduce operation
     return torch.unsqueeze(sod_loss, 0), torch.unsqueeze(depth_loss, 0), sod_outputs, depth_outputs
 
+class DADisentangleFullModel(nn.Module):
+  def __init__(self, model, loss):
+    super().__init__()
+    self.model = model
+    self.loss = loss
+
+  def forward(self, rgb_inputs, depth_inputs, labels):
+    sod_outputs, depth_outputs, reconstruct_losses = self.model(rgb_inputs, depth_inputs)
+    sod_loss = self.loss[0](sod_outputs, labels)
+    depth_loss = self.loss[1](depth_outputs, depth_inputs)
+    reconstruct_loss = torch.mean(reconstruct_losses)
+
+    # here convert to scalar to 1-d tensor for reduce operation
+    return torch.unsqueeze(sod_loss, 0), torch.unsqueeze(depth_loss, 0), torch.unsqueeze(reconstruct_loss, 0), \
+           sod_outputs, depth_outputs
+
+
 class MSFullModel(nn.Module):
     pass
 

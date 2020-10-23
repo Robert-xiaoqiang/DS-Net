@@ -275,9 +275,9 @@ class SupervisedTrainer:
         self.writer.add_scalar('val/MAXE', results['MAXE'], epoch)
         self.writer.add_scalar('val/MAE', results['MAE'], epoch)
 
-        is_update = results['MAE'] < self.best_val_results['MAE'] and \
-                    results['S'] > self.best_val_results['S'] and \
-                    results['MAXF'] > self.best_val_results['MAXF'] and \
+        is_update = results['MAE'] < self.best_val_results['MAE'] or \
+                    results['S'] > self.best_val_results['S'] or \
+                    results['MAXF'] > self.best_val_results['MAXF'] or \
                     results['MAXE'] > self.best_val_results['MAXE']
 
         if is_update:
