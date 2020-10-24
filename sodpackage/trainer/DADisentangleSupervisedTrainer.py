@@ -111,7 +111,7 @@ class DADisentangleSupervisedTrainer(SupervisedTrainer):
             with torch.no_grad():
                 batch_rgb, batch_depth, batch_label, batch_mask_path, batch_key, \
                 = self.build_data(batch_data)
-                sod_losses, depth_losses, reconstruct_loss, *output = self.model(batch_rgb, batch_depth, batch_label)
+                sod_losses, depth_losses, reconstruct_losses, *output = self.model(batch_rgb, batch_depth, batch_label)
             
             if self.config.TRAIN.REDUCTION == 'mean':
                 sod_loss = sod_losses.mean()
