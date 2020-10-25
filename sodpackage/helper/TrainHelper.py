@@ -456,7 +456,7 @@ class MTFakeFullModel(nn.Module):
         self.loss = None
 
     def forward(self, rgb_inputs, depth_inputs):
-        # [sod_outputs, depth_outputs]
+        # [sod_outputs, depth_outputs, ...others]
         batch_outputs = self.model(rgb_inputs, depth_inputs)
         return batch_outputs
 
@@ -506,6 +506,87 @@ class DADisentangleFullModel(nn.Module):
     return torch.unsqueeze(sod_loss, 0), torch.unsqueeze(depth_loss, 0), torch.unsqueeze(reconstruct_loss, 0), \
            sod_outputs, depth_outputs
 
+class MTDisentangleFullModel(nn.Module):
+    def __init__(self, model, loss):
+        super().__init__()
+        self.model = model
+        self.loss = loss
+
+    def forward(self, rgb_inputs, depth_inputs, labels, unlabeled_ema_outputs, lb, is_train = True):
+        # [sod_outputs, depth_outputs, reconstruct_losses]
+        batch_outputs = self.model(rgb_inputs, depth_inputs)
+        # shape B
+        reconstruct_losses = batch_outputs[2]
+        if is_train:
+            # sod loss is only for labeled data
+            sod_supervised = self.loss[0](batch_outputs[0][:lb], labels[:lb])
+            # depth loss for unlabeled data is also trivial
+            depth_supervised = self.loss[1](batch_outputs[1], depth_inputs)
+            supervised_loss = sod_supervised + depth_supervised
+
+            sod_consistency = self.loss[2](batch_outputs[0][lb:], unlabeled_ema_outputs[0])
+            depth_consistency = self.loss[3](batch_outputs[1][lb:], unlabeled_ema_outputs[1])
+            consistency_loss = sod_consistency + depth_consistency
+            # reconstruct loss is for all samples, all in bp !!!!
+            reconstruct_loss = torch.mean(reconstruct_losses)
+
+            sr_loss = supervised_loss + 1.0 * reconstruct_loss
+
+            return torch.unsqueeze(sr_loss, 0), torch.unsqueeze(consistency_loss, 0), \
+                   batch_outputs[0], batch_outputs[1]
+        else:
+            # when validating, we have no unlabeled data, different loss computation !!!!
+            sod_supervised = self.loss[0](batch_outputs[0], labels)
+            depth_supervised = self.loss[1](batch_outputs[1], depth_inputs)
+            supervised_loss = sod_supervised + depth_supervised
+            reconstruct_loss = torch.mean(reconstruct_losses)
+
+            sr_loss = supervised_loss + 1.0 * reconstruct_loss            
+            return torch.unsqueeze(sr_loss, 0), batch_outputs[0], batch_outputs[1]
+
+class GCMTDisentangleFullModel(nn.Module):
+    def __init__(self, model, loss):
+        super().__init__()
+        self.model = model
+        self.loss = loss
+
+    def forward(self, rgb_inputs, depth_inputs, labels, unlabeled_ema_outputs, lb, is_train = True):
+        # [sod_outputs, depth_outputs, gate_map, reconstruct_losses]
+        batch_outputs = self.model(rgb_inputs, depth_inputs)
+        # shape B
+        reconstruct_losses = batch_outputs[2]
+        # num of scales
+        ns = len(batch_outputs[2])
+        if is_train:
+            # sod loss is only for labeled data
+            sod_supervised = self.loss[0](batch_outputs[0][:lb], labels[:lb])
+            # depth loss for unlabeled data is also trivial
+            depth_supervised = self.loss[1](batch_outputs[1], depth_inputs)
+            supervised_loss = sod_supervised + depth_supervised
+
+            sod_consistency = self.loss[2](batch_outputs[0][lb:], unlabeled_ema_outputs[0])
+            depth_consistency = self.loss[3](batch_outputs[1][lb:], unlabeled_ema_outputs[1])
+            gate_consistencies = [ self.loss[4](batch_outputs[2][i][lb:], unlabeled_ema_outputs[2][i]) for i in range(ns) ]
+            # (4 scale sum) gate consistency
+            gate_consistency = torch.sum(gate_consistencies)
+            print(gate_consistency)
+            consistency_loss = sod_consistency + depth_consistency + gate_consistency
+            # reconstruct loss is for all samples, all in bp !!!!
+            reconstruct_loss = torch.mean(reconstruct_losses)
+
+            sr_loss = supervised_loss + 1.0 * reconstruct_loss
+
+            return torch.unsqueeze(sr_loss, 0), torch.unsqueeze(consistency_loss, 0), \
+                   batch_outputs[0], batch_outputs[1]
+        else:
+            # when validating, we have no unlabeled data, different loss computation !!!!
+            sod_supervised = self.loss[0](batch_outputs[0], labels)
+            depth_supervised = self.loss[1](batch_outputs[1], depth_inputs)
+            supervised_loss = sod_supervised + depth_supervised
+            reconstruct_loss = torch.mean(reconstruct_losses)
+
+            sr_loss = supervised_loss + 1.0 * reconstruct_loss            
+            return torch.unsqueeze(sr_loss, 0), batch_outputs[0], batch_outputs[1]
 
 class MSFullModel(nn.Module):
     pass
