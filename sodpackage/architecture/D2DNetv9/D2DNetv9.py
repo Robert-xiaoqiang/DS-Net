@@ -64,34 +64,6 @@ class DepthAwarenessModule(nn.Module):
 
         return torch.sigmoid(out)
 
-class DepthCorrelationModule(nn.Module):
-    def __init__(self, inplanes, planes):
-        super().__init__()
-        self.inplanes = inplanes
-        self.planes = planes
-
-        self.rgb_encoder = nn.Conv2d(self.inplanes, self.planes, 1, stride = 1, padding = 0)
-        self.depth_lhs_encoder = nn.Conv2d(self.inplanes, self.planes, 1, stride = 1, padding = 0)
-        self.depth_rhs_encoder = nn.Conv2d(self.inplanes, self.planes, 1, stride = 1, padding = 0)
-    
-    def forward(self, x, depth_feature):
-        B, C, H, W = x.shape
-
-        x = self.rgb_encoder(x)
-        lhs = self.depth_lhs_encoder(depth_feature)
-        rhs = self.depth_rhs_encoder(depth_feature)
-
-        transposed_x = x.permute(0, 2, 3, 1).reshape(-1, C)
-        lhs = lhs.permute(0, 2, 3, 1).reshape(-1, C)
-        rhs = rhs.permute(0, 2, 3, 1).reshape(-1, C)
-        # BHW * BHW inner-product similarity
-        logits = torch.matmul(lhs, rhs.T)
-        # row posterior/weight/relation normalization
-        weight = F.softmax(logits, dim = 1)
-        y = torch.matmul(weight, transposed_x).view(B, H, W, C).permute(0, 3, 1, 2)
-
-        return y
-
 class DepthGatedModule(nn.Module):
     def __init__(self, inplanes):
         super().__init__()
@@ -117,20 +89,15 @@ class ComplementaryGatedFusion(nn.Module):
         self.multi_scale_inplanes = multi_scale_inplanes
         self.ns = len(self.multi_scale_inplanes)
         self.dams = nn.ModuleList([ DepthAwarenessModule(p, p) for p in self.multi_scale_inplanes ])
-        self.dcms = nn.ModuleList([ DepthCorrelationModule(p, p) for p in self.multi_scale_inplanes ])
         self.dgms = nn.ModuleList([ DepthGatedModule(p) for p in self.multi_scale_inplanes ])
     
     def forward(self, from_depth_estimation, from_rgb, from_depth_extraction):
-        # main
-        da_feature = [ self.dams[i](from_rgb[i], from_depth_extraction[i]) for i in range(self.ns) ]
-        # auxiliary
-        dc_feature = [ self.dcms[i](from_rgb[i], from_depth_estimation[i]) for i in range(self.ns) ]
         gate_map = [ self.dgms[i](from_depth_extraction[i], from_depth_estimation[i]) for i in range(self.ns) ]
-        gated_fusion_feature = [ da_feature[i] + gate_map[i] * dc_feature[i] for i in range(self.ns) ]
+        gated_da_feature = [ self.dams[i](from_rgb[i] * gate_map[i], from_depth_extraction[i]) for i in range(self.ns) ]
 
-        y = gated_fusion_feature
+        y = gated_da_feature
 
-        return y, gate_map
+        return y
 
 class DecoderSubnet(nn.Module):
     def __init__(self, inplanes):
@@ -239,7 +206,7 @@ class MSDisentangleLoss(nn.Module):
 
         return y
 
-class D2DNetv8(nn.Module):
+class D2DNetv9(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -301,15 +268,15 @@ class D2DNetv8(nn.Module):
         depth_extraction_feature = self.depth_extraction_encoder(depth)
         from_depth_extraction = depth_extraction_feature # depth_extraction subnet ????
 
-        adaptive_combination, gate_map = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
+        adaptive_combination = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
         
-        adaptive_combination = D2DNetv8.merge(adaptive_combination)
+        adaptive_combination = D2DNetv9.merge(adaptive_combination)
         y = self.last_layer(adaptive_combination)
 
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
         sod_output = y
 
-        output = sod_output if self.config.TRAIN.MTL_OUTPUT == 'single' else (sod_output, depth_output, gate_map, reconstruct_loss)
+        output = sod_output if self.config.TRAIN.MTL_OUTPUT == 'single' else (sod_output, depth_output, reconstruct_loss)
         
         return output
 

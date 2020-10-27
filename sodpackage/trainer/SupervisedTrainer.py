@@ -14,7 +14,8 @@ import os
 import copy
 from collections import OrderedDict
 
-from ..helper.TrainHelper import AverageMeter, LoggerPather, DeviceWrapper, FullModel
+from ..helper.TrainHelper import AverageMeter, LoggerPather, DeviceWrapper, \
+FullModel, MetricsComparator
 from ..helper.TestHelper import Evaluator
 from .. import inference
 
@@ -264,6 +265,17 @@ class SupervisedTrainer:
         self.logger.info('[epoch {}/{} - iteration {}/{}]: loss(cur): {:.4f}, loss(avg): {:.4f}, lr: {:.8f}'\
                 .format(epoch, self.num_epochs, iteration, self.num_iterations, loss.item(), self.loss_avg_meter.average(), self.optimizer.param_groups[0]['lr']))
 
+    @staticmethod
+    def dict_wins(new_dict, old_dict):
+        max_comparator = MetricsComparator()
+        min_comparator = MetricsComparator(target = 'min')
+        ret = int(max_comparator.wins(new_dict['S'], old_dict['S'])) + \
+              int(max_comparator.wins(new_dict['MAXF'], old_dict['MAXF'])) + \
+              int(max_comparator.wins(new_dict['MAXE'], old_dict['MAXE'])) + \
+              int(min_comparator.wins(new_dict['MAE'], old_dict['MAE']))
+        
+        return ret > 1
+
     def on_epoch_end(self, epoch):
         self.lr_scheduler.step(epoch + 1)
         self.save_checkpoint(epoch + 1)
@@ -275,10 +287,7 @@ class SupervisedTrainer:
         self.writer.add_scalar('val/MAXE', results['MAXE'], epoch)
         self.writer.add_scalar('val/MAE', results['MAE'], epoch)
 
-        is_update = results['MAE'] < self.best_val_results['MAE'] or \
-                    results['S'] > self.best_val_results['S'] or \
-                    results['MAXF'] > self.best_val_results['MAXF'] or \
-                    results['MAXE'] > self.best_val_results['MAXE']
+        is_update = SupervisedTrainer.dict_wins(results, self.best_val_results)
 
         if is_update:
             self.best_val_results.update(results)

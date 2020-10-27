@@ -358,6 +358,17 @@ class AverageMeter:
     def average(self):
         return self.avg
 
+class MetricsComparator:
+    def __init__(self, target = 'max', threshold = 0.0005):
+        self.target = target
+        self.threshold = threshold
+
+    def wins(self, new_value, old_value):
+        diff_value = new_value - old_value if self.target == 'max' else old_value - new_value
+        ret = diff_value >= self.threshold
+
+        return ret
+
 class ModelWrapper:
     def __init__(self):
         pass
