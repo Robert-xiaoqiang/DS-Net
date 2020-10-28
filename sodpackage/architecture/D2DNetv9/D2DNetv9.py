@@ -68,19 +68,36 @@ class DepthGatedModule(nn.Module):
     def __init__(self, inplanes):
         super().__init__()
         self.inplanes = inplanes
-        self.encoder = nn.Conv2d(self.inplanes * 2, self.inplanes, 1, stride = 1, padding = 0)
-        self.decoder = nn.Sequential(
-            nn.Conv2d(self.inplanes, self.inplanes // 4, 1, stride = 1, padding = 0),
-            BatchNorm2d(self.inplanes // 4),
-            nn.ReLU(inplace = True),
-            nn.Conv2d(self.inplanes // 4, 1, 1, stride = 1, padding = 0),
-            nn.Sigmoid()
-        )
 
-    def forward(self, d0, d1):
-        d = self.encoder(torch.cat([ d0, d1 ], dim = 1))
-        y = self.decoder(d + d0 + d1)
+        self.rgb_encoder = nn.Conv2d(self.inplanes, self.inplanes, 1, stride = 1, padding = 0)
+        self.depth_lhs_encoder = nn.Conv2d(self.inplanes, self.inplanes, 1, stride = 1, padding = 0)
+        self.depth_rhs_encoder = nn.Conv2d(self.inplanes, self.inplanes, 1, stride = 1, padding = 0)
 
+        # self.decoder = nn.Sequential(
+        #     nn.Conv2d(self.inplanes, self.inplanes // 4, 1, stride = 1, padding = 0),
+        #     BatchNorm2d(self.inplanes // 4),
+        #     nn.ReLU(inplace = True),
+        #     nn.Conv2d(self.inplanes // 4, 1, 1, stride = 1, padding = 0),
+        #     nn.Sigmoid()
+        # )
+
+    def forward(self, x, from_depth_estimation):
+        B, C, H, W = x.shape
+
+        x = self.rgb_encoder(x)
+        lhs = self.depth_lhs_encoder(from_depth_estimation)
+        rhs = self.depth_rhs_encoder(from_depth_estimation)
+
+        transposed_x = x.permute(0, 2, 3, 1).reshape(-1, C)
+        lhs = lhs.permute(0, 2, 3, 1).reshape(-1, C)
+        rhs = rhs.permute(0, 2, 3, 1).reshape(-1, C)
+        # BHW * BHW inner-product similarity
+        logits = torch.matmul(lhs, rhs.T)
+        # row posterior/weight/relation/interaction normalization
+        weight = F.softmax(logits, dim = 1)
+        enhanced_x = torch.matmul(weight, transposed_x).view(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+        # y = self.decoder(enhanced_x)
+        y = enhanced_x
         return y
 
 class ComplementaryGatedFusion(nn.Module):
@@ -93,7 +110,7 @@ class ComplementaryGatedFusion(nn.Module):
     
     def forward(self, from_depth_estimation, from_rgb, from_depth_extraction):
         gate_map = [ self.dgms[i](from_depth_extraction[i], from_depth_estimation[i]) for i in range(self.ns) ]
-        gated_da_feature = [ self.dams[i](from_rgb[i] * gate_map[i], from_depth_extraction[i]) for i in range(self.ns) ]
+        gated_da_feature = [ gate_map[i] + self.dams[i](from_rgb[i], from_depth_extraction[i]) for i in range(self.ns) ]
 
         y = gated_da_feature
 

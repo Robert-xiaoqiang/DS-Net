@@ -157,10 +157,14 @@ class Deducer:
                     output = self.model(batch_rgb, batch_depth)
 
                 output_cpu = output[0].cpu().detach()
-                for pred, mask_path, image_main_name in zip(output_cpu, batch_mask_path, batch_key):
-                    mask = copy.deepcopy(Image.open(mask_path).convert('L'))
+                depth_cpu = output[1].cpu().detach()
+                for pred, depth, mask_path, image_main_name in zip(output_cpu, depth_cpu, batch_mask_path, batch_key):
+                    # mask = copy.deepcopy(Image.open(mask_path).convert('L'))
                     
-                    pred = self.to_pil(pred).convert('L').resize(mask.size)
+                    pred = self.to_pil(pred).convert('L')#.resize(mask.size)
                     pred.save(os.path.join(save_path, image_main_name + '.png'))
+
+                    depth = self.to_pil(depth).convert('L')#.resize(mask.size)
+                    depth.save(os.path.join(save_path, image_main_name + '_depth.png'))
 
         self.logger.info('Finish predicting it, enjoy everything')
