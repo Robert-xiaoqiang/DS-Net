@@ -129,7 +129,7 @@ class ComplementaryGatedFusion(nn.Module):
     def forward(self, from_depth_estimation, from_rgb, from_depth_extraction):
         dg_feature = [ self.dgms[i](from_depth_extraction[i], from_depth_estimation[i]) for i in range(self.ns) ]
         da_feature = [ self.dams[i](from_rgb[i], from_depth_extraction[i]) for i in range(self.ns) ]
-        dd_map = [ self.ddms[i](from_rgb) for i in range(self.ns) ]
+        dd_map = [ self.ddms[i](from_rgb[i]) for i in range(self.ns) ]
         y = [ dd_map[i] * da_feature[i] + dg_feature[i] for i in range(self.ns) ]
 
         return y
