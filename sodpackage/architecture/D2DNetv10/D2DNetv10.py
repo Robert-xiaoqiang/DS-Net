@@ -73,6 +73,12 @@ class DepthGatedModule(nn.Module):
         self.depth_lhs_encoder = nn.Conv2d(self.inplanes, self.inplanes, 1, stride = 1, padding = 0)
         self.depth_rhs_encoder = nn.Conv2d(self.inplanes, self.inplanes, 1, stride = 1, padding = 0)
 
+        self.decoder = nn.Sequential(
+            nn.Conv2d(self.inplanes, self.inplanes, 1, stride = 1, padding = 0),
+            BatchNorm2d(self.inplanes),
+            nn.ReLU(inplace = True)
+        )
+
     def forward(self, x, from_depth_estimation):
         B, C, H, W = x.shape
 
@@ -88,7 +94,27 @@ class DepthGatedModule(nn.Module):
         # row posterior/weight/relation/interaction normalization
         weight = F.softmax(logits, dim = 1)
         enhanced_x = torch.matmul(weight, transposed_x).view(B, H, W, C).permute(0, 3, 1, 2).contiguous()
-        y = enhanced_x
+        y = self.decoder(enhanced_x)
+
+        return y
+
+class DepthDistillingModule(nn.Module):
+    def __init__(self, inplanes):
+        super().__init__()
+        self.inplanes = inplanes
+        self.encoder = nn.Conv2d(self.inplanes, self.inplanes, 1, stride = 1, padding = 0)
+        self.decoder = nn.Sequential(
+            nn.Conv2d(self.inplanes, self.inplanes // 4, 1, stride = 1, padding = 0),
+            BatchNorm2d(self.inplanes // 4),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(self.inplanes // 4, 1, 1, stride = 1, padding = 0),
+            nn.Sigmoid()
+        )
+
+    def forward(self, d):
+        ed = self.encoder(d)
+        y = self.decoder(ed + d)
+
         return y
 
 class ComplementaryGatedFusion(nn.Module):
@@ -98,12 +124,13 @@ class ComplementaryGatedFusion(nn.Module):
         self.ns = len(self.multi_scale_inplanes)
         self.dams = nn.ModuleList([ DepthAwarenessModule(p, p) for p in self.multi_scale_inplanes ])
         self.dgms = nn.ModuleList([ DepthGatedModule(p) for p in self.multi_scale_inplanes ])
+        self.ddms = nn.ModuleList([ DepthDistillingModule(p) for p in self.multi_scale_inplanes ])
     
     def forward(self, from_depth_estimation, from_rgb, from_depth_extraction):
-        gate_map = [ self.dgms[i](from_depth_extraction[i], from_depth_estimation[i]) for i in range(self.ns) ]
-        gated_da_feature = [ gate_map[i] + self.dams[i](from_rgb[i], from_depth_extraction[i]) for i in range(self.ns) ]
-
-        y = gated_da_feature
+        dg_feature = [ self.dgms[i](from_depth_extraction[i], from_depth_estimation[i]) for i in range(self.ns) ]
+        da_feature = [ self.dams[i](from_rgb[i], from_depth_extraction[i]) for i in range(self.ns) ]
+        dd_map = [ self.ddms[i](from_rgb) for i in range(self.ns) ]
+        y = [ dd_map[i] * da_feature[i] + dg_feature[i] for i in range(self.ns) ]
 
         return y
 
@@ -214,7 +241,7 @@ class MSDisentangleLoss(nn.Module):
 
         return y
 
-class D2DNetv9(nn.Module):
+class D2DNetv10(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -278,7 +305,7 @@ class D2DNetv9(nn.Module):
 
         adaptive_combination = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
         
-        adaptive_combination = D2DNetv9.merge(adaptive_combination)
+        adaptive_combination = D2DNetv10.merge(adaptive_combination)
         y = self.last_layer(adaptive_combination)
 
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)

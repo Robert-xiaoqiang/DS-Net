@@ -85,7 +85,7 @@ TRAIN:
   NESTEROV: false
   REDUCTION: mean
   UNLABELED:
-    DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/DUTS-TR' 
+    DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/DUTS-TR'
     BATCH_SIZE: 4
     EMA_DECAY: 0.99
     CONSISTENCY: 0.1

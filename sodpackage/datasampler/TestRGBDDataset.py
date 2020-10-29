@@ -1,4 +1,5 @@
 from torchvision import transforms
+import numpy as np
 from PIL import Image
 
 import os
@@ -11,6 +12,19 @@ class TestRGBDDataset(RGBDDataset):
         super().__init__(dataset_root, train_size)
 
         self.joint_transform = JointResize(train_size)
+
+        # self.data_list = self._make_list(dataset_root, [ 'RGB', 'generated_depth', 'GT' ])
+        # self.mean = np.array([0.447, 0.407, 0.386])
+        # self.std = np.array([0.244, 0.250, 0.253])
+
+        # self.joint_transform = JointResize(train_size)
+
+        # self.image_transform = transforms.Compose([
+        #     transforms.ToTensor(),
+        #     transforms.Normalize(self.mean, self.std)
+        #     ])
+        # self.depth_transform = transforms.ToTensor()
+        # self.mask_transform = transforms.ToTensor()
 
     def __getitem__(self, index):
         image_path, depth_path, mask_path = self.data_list[index]

@@ -71,11 +71,9 @@ class DataPreprocessor:
         self.val_dataloader = None
         self.test_dataloader = None
 
+    def get_train_dataloader(self):
         # get class
         TrainDataset = eval(self.config.TRAIN.DATASET)
-        ValDataset = eval(self.config.VAL.DATASET)
-        TestDataset = eval(self.config.TEST.DATASET)
-
         # instantiate and wrap loader
         if TrainDataset == TrainSemiRGBDDataset:
             self.train_dataset = TrainDataset(self.config.TRAIN.DATASET_ROOT, self.config.TRAIN.UNLABELED.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
@@ -98,16 +96,12 @@ class DataPreprocessor:
                                                 drop_last = True,
                                                 worker_init_fn = lambda wid: random.seed(self.config.SEED + wid))
 
-        # without shuffle and drop last
-        self.val_dataset = ValDataset(self.config.VAL.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
-        self.val_dataloader = DataLoaderX(self.val_dataset,
-                                        batch_size = self.config.TRAIN.BATCH_SIZE,
-                                        num_workers = self.config.TRAIN.WORKERS,
-                                        pin_memory = True,
-                                        drop_last = True,
-                                        worker_init_fn = lambda wid: random.seed(self.config.SEED + wid))
-        self.test_dataloaders = { }
+        return self.train_dataloader
 
+    def get_test_dataloaders(self):
+        self.test_dataloaders = { }
+        # get class  
+        TestDataset = eval(self.config.TEST.DATASET)
         # list of 1-pair dictionaries
         for entry in self.config.TEST.DATASET_ROOTS:
             dataset_key, dataset_root = list(entry.items())[0]
@@ -119,12 +113,17 @@ class DataPreprocessor:
                                     pin_memory = True,
                                     worker_init_fn = lambda wid: random.seed(self.config.SEED + wid))
             self.test_dataloaders[dataset_key] = dataloader
-
-    def get_train_dataloader(self):
-        return self.train_dataloader
-
-    def get_test_dataloaders(self):
         return self.test_dataloaders
 
     def get_val_dataloader(self):
+        ValDataset = eval(self.config.VAL.DATASET)
+        # without shuffle and drop last
+        self.val_dataset = ValDataset(self.config.VAL.DATASET_ROOT, self.config.TRAIN.TRAIN_SIZE)
+        self.val_dataloader = DataLoaderX(self.val_dataset,
+                                        batch_size = self.config.TRAIN.BATCH_SIZE,
+                                        num_workers = self.config.TRAIN.WORKERS,
+                                        pin_memory = True,
+                                        drop_last = True,
+                                        worker_init_fn = lambda wid: random.seed(self.config.SEED + wid))
+
         return self.val_dataloader
