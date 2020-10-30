@@ -1,4 +1,4 @@
-NAME: 'w48-d2dnetv7-disentangle-supervised-0'
+NAME: 'w48-d2dnetv7x-disentangle-supervised-0'
 DEVICE: 'cuda:0,1,2,3'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
@@ -7,7 +7,7 @@ CUDNN:
   DETERMINISTIC: false
   ENABLED: true
 MODEL:
-  NAME: D2DNetv7
+  NAME: D2DNetv7x
   PRETRAINED: '/home/xqwang/projects/saliency/dev/pretrained/hrnetv2_w48_imagenet_pretrained.pth'
   EXTRA:
     FINAL_CONV_KERNEL: 1
