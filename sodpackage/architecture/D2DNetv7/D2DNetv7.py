@@ -251,7 +251,6 @@ class D2DNetv7(nn.Module):
         self.ns = len(last_stage_channels)
 
         self.rgb_subnet = MSDecoderSubnet(last_stage_channels)
-        self.depth_estimation_subnet = MSDecoderSubnet(last_stage_channels)
 
         self.disentangle_reconstructor = MSDecoderReconstructor(list(map(lambda x: 2*x, last_stage_channels)))
         self.disentangle_loss = MSDisentangleLoss(last_stage_channels)

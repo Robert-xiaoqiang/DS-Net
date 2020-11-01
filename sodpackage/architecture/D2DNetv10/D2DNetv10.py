@@ -98,6 +98,25 @@ class DepthGatedModule(nn.Module):
 
         return y
 
+class DepthInceptionModule(nn.Module):
+    def __init__(self, inplanes):
+        super().__init__()
+        self.inplanes = inplanes
+        self.encoder = nn.Conv2d(self.inplanes, self.inplanes, 1, stride = 1, padding = 0)
+        self.decoder = nn.Sequential(
+            nn.Conv2d(self.inplanes, self.inplanes // 4, 1, stride = 1, padding = 0),
+            BatchNorm2d(self.inplanes // 4),
+            nn.ReLU(inplace = True),
+            nn.Conv2d(self.inplanes // 4, 1, 1, stride = 1, padding = 0),
+            nn.Sigmoid()
+        )
+
+    def forward(self, d):
+        ed = self.encoder(d)
+        y = self.decoder(ed + d)
+
+        return y
+
 class DepthDistillingModule(nn.Module):
     def __init__(self, inplanes):
         super().__init__()
@@ -278,17 +297,6 @@ class D2DNetv10(nn.Module):
                 padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0),
             nn.Sigmoid()
         )
-
-    @staticmethod
-    def merge(x):
-        x0_h, x0_w = x[0].size(2), x[0].size(3)
-        x1 = F.interpolate(x[1], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-        x2 = F.interpolate(x[2], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-        x3 = F.interpolate(x[3], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-
-        y = torch.cat([x[0], x1, x2, x3], 1)
-
-        return y
 
     def forward(self, rgb, depth):
         ori_h, ori_w = rgb.shape[2], rgb.shape[3]
