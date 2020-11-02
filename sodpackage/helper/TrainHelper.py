@@ -537,7 +537,7 @@ class MTDisentangleFullModel(nn.Module):
 
             sod_consistency = self.loss[2](batch_outputs[0][lb:], unlabeled_ema_outputs[0])
             depth_consistency = self.loss[3](batch_outputs[1][lb:], unlabeled_ema_outputs[1])
-            consistency_loss = sod_consistency + depth_consistency
+            consistency_loss = sod_consistency + 0.5 * depth_consistency
             # reconstruct loss is for all samples, all in bp !!!!
             reconstruct_loss = torch.mean(reconstruct_losses)
 
