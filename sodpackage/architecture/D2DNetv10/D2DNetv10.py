@@ -126,11 +126,12 @@ class ComplementaryGatedFusion(nn.Module):
         self.dgms = nn.ModuleList([ DepthGatedModule(p) for p in self.multi_scale_inplanes ])
         self.ddms = nn.ModuleList([ DepthDistillingModule(p) for p in self.multi_scale_inplanes ])
     
+    # [R_i^d], [R_i^s], [D_i]
     def forward(self, from_depth_estimation, from_rgb, from_depth_extraction):
-        dg_feature = [ self.dgms[i](from_depth_extraction[i], from_depth_estimation[i]) for i in range(self.ns) ]
         da_feature = [ self.dams[i](from_rgb[i], from_depth_extraction[i]) for i in range(self.ns) ]
+        dg_feature = [ self.dgms[i](from_depth_extraction[i], from_depth_estimation[i]) for i in range(self.ns) ]
         dd_map = [ self.ddms[i](dg_feature[i], da_feature[i]) for i in range(self.ns) ]
-        y = [ dd_map[i] * da_feature[i] + dg_feature[i] for i in range(self.ns) ]
+        y = [ dd_map[i] * from_depth_extraction[i] + da_feature[i] + dg_feature[i] for i in range(self.ns) ]
 
         return y
 
@@ -241,75 +242,6 @@ class MSDisentangleLoss(nn.Module):
 
         return y
 
-class FeatureEnhancedModule(nn.Module):
-    def __init__(self, inplanes0, inplanes1):
-        super().__init__()
-        self.inplanes0 = inplanes0
-        self.inplanes1 = inplanes1
-        self.outplanes = self.inplanes1
-
-        self.encoder0 = nn.Conv2d(self.inplanes0, self.outplanes, 1, stride = 1, padding = 0)
-        self.aspp = ASPP(self.outplanes, self.outplanes)
-        self.encoder1 = nn.Conv2d(self.inplanes1, self.outplanes, 1, stride = 1, padding = 0)
-
-    def forward(self, f, larger):
-        enlarged_f = self.encoder0(F.interpolate(f, size=larger.size()[2:], mode='bilinear', align_corners=True))
-        enhanced_f = self.aspp(enlarged_f)
-
-        encoded_larger = self.encoder1(larger)
-
-        y = enhanced_f + encoded_larger
-
-        return y
-
-class ASPPCell(nn.Module):
-    def __init__(self, inplanes, planes, kernel_size, padding, dilation):
-        super().__init__()
-        self.atrous_conv = nn.Conv2d(inplanes, planes, kernel_size=kernel_size,
-                                     stride=1, padding=padding, dilation=dilation, bias=False)
-        self.bn = BatchNorm2d(planes, momentum=BN_MOMENTUM)
-        self.relu = nn.ReLU()
-
-    def forward(self, x):
-        x = self.atrous_conv(x)
-        x = self.bn(x)
-
-        return self.relu(x)
-
-class ASPP(nn.Module):
-    def __init__(self, inplanes, outplanes):
-        super().__init__()
-        dilations = [1, 6, 12, 18]
-
-        self.aspp1 = ASPPCell(inplanes, outplanes, 1, padding=0, dilation=dilations[0])
-        self.aspp2 = ASPPCell(inplanes, outplanes, 3, padding=dilations[1], dilation=dilations[1])
-        self.aspp3 = ASPPCell(inplanes, outplanes, 3, padding=dilations[2], dilation=dilations[2])
-        self.aspp4 = ASPPCell(inplanes, outplanes, 3, padding=dilations[3], dilation=dilations[3])
-
-        self.global_avg_pool = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
-                                             nn.Conv2d(inplanes, outplanes, 1, stride=1, bias=False),
-                                             BatchNorm2d(outplanes, momentum=BN_MOMENTUM),
-                                             nn.ReLU())
-        self.conv1 = nn.Conv2d(outplanes * 5, outplanes, 1, bias=False)
-        self.bn1 = BatchNorm2d(outplanes, momentum=BN_MOMENTUM)
-        self.relu = nn.ReLU()
-        # self.dropout = nn.Dropout(0.5)
-
-    def forward(self, x):
-        x1 = self.aspp1(x)
-        x2 = self.aspp2(x)
-        x3 = self.aspp3(x)
-        x4 = self.aspp4(x)
-        x5 = self.global_avg_pool(x)
-        x5 = F.interpolate(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
-        x = torch.cat((x1, x2, x3, x4, x5), dim=1)
-
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-
-        return x
-
 class D2DNetv10(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -330,27 +262,51 @@ class D2DNetv10(nn.Module):
         self.depth_extraction_encoder = Backbone(self.config, 1)
         self.cgf = ComplementaryGatedFusion(last_stage_channels)
 
-        self.fem0 = FeatureEnhancedModule(last_stage_channels[-1], last_stage_channels[-2])
-        self.fem1 = FeatureEnhancedModule(last_stage_channels[-2], last_stage_channels[-3])
-        self.fem2 = FeatureEnhancedModule(last_stage_channels[-3], last_stage_channels[-4])
-
-        self.last_layer = nn.Sequential(
+        self.second_last_layer = nn.Sequential(
             nn.Conv2d(
-                in_channels=last_stage_channels[-4],
-                out_channels=last_stage_channels[-4],
+                in_channels=sum_last_stage_channels,
+                out_channels=sum_last_stage_channels,
                 kernel_size=1,
                 stride=1,
                 padding=0),
-            BatchNorm2d(last_stage_channels[-4], momentum=BN_MOMENTUM),
+            BatchNorm2d(sum_last_stage_channels, momentum=BN_MOMENTUM),
             nn.ReLU(inplace=False),
             nn.Conv2d(
-                in_channels=last_stage_channels[-4],
+                in_channels=sum_last_stage_channels,
+                out_channels=sum_last_stage_channels,
+                kernel_size=1,
+                stride=1,
+                padding=0)
+        )
+
+        self.last_layer = nn.Sequential(
+            nn.Conv2d(
+                in_channels=sum_last_stage_channels,
+                out_channels=sum_last_stage_channels,
+                kernel_size=1,
+                stride=1,
+                padding=0),
+            BatchNorm2d(sum_last_stage_channels, momentum=BN_MOMENTUM),
+            nn.ReLU(inplace=False),
+            nn.Conv2d(
+                in_channels=sum_last_stage_channels,
                 out_channels=1,
                 kernel_size=extra.FINAL_CONV_KERNEL,
                 stride=1,
                 padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0),
             nn.Sigmoid()
         )
+
+    @staticmethod
+    def merge(x):
+        x0_h, x0_w = x[0].size(2), x[0].size(3)
+        x1 = F.interpolate(x[1], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
+        x2 = F.interpolate(x[2], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
+        x3 = F.interpolate(x[3], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
+
+        y = torch.cat([x[0], x1, x2, x3], 1)
+
+        return y
 
     def forward(self, rgb, depth):
         ori_h, ori_w = rgb.shape[2], rgb.shape[3]
@@ -367,11 +323,10 @@ class D2DNetv10(nn.Module):
 
         adaptive_combination = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
         
-        ef3 = self.fem0(adaptive_combination[-1], adaptive_combination[-2])
-        ef2 = self.fem1(ef3, adaptive_combination[-3])
-        ef1 = self.fem2(ef2, adaptive_combination[-4])
+        merged_feature = D2DNetv10.merge(adaptive_combination)
+        merged_feature = self.second_last_layer(merged_feature)
         
-        y = F.interpolate(ef1, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
+        y = F.interpolate(merged_feature, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
         y = self.last_layer(y)
 
         sod_output = y
