@@ -58,7 +58,7 @@ class RGB2DepthNet(nn.Module):
         self.sum_last_stage_channels = np.int(np.sum(np.asarray(self.last_stage_channels)))
         
         self.depth_estimation_subnet = MSDecoderSubnet(self.last_stage_channels)
-
+        # TO-DO sigmoid must not be used to regress !!!!
         self.last_layer = nn.Sequential(
             nn.Conv2d(
                 in_channels=self.sum_last_stage_channels,
