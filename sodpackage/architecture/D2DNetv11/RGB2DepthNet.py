@@ -11,6 +11,43 @@ from ..Component.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 BatchNorm2d = SynchronizedBatchNorm2d
 BN_MOMENTUM = 0.01
 
+class DecoderSubnet(nn.Module):
+    def __init__(self, inplanes):
+        super().__init__()
+        self.inplanes = inplanes
+        self.layer = nn.Sequential(
+            nn.Conv2d(
+                in_channels=self.inplanes,
+                out_channels=self.inplanes,
+                kernel_size=3,
+                stride=1,
+                padding=1),
+            BatchNorm2d(self.inplanes, momentum=BN_MOMENTUM),
+            nn.ReLU(inplace=False),
+            nn.Conv2d(
+                in_channels=self.inplanes,
+                out_channels=self.inplanes,
+                kernel_size=3,
+                stride=1,
+                padding=1)
+        )
+    def forward(self, x):
+        y = self.layer(x)
+
+        return y
+
+class MSDecoderSubnet(nn.Module):
+    def __init__(self, muitl_scale_inplanes):
+        super().__init__()
+        # list channels
+        self.muitl_scale_inplanes = muitl_scale_inplanes
+        self.ns = len(self.muitl_scale_inplanes)
+        self.layers = nn.ModuleList([ DecoderSubnet(p) for p in self.muitl_scale_inplanes ])
+
+    def forward(self, x):
+        assert len(x) == self.ns, 'please make sure multi-scale output'
+        return [ self.layers[i](x[i]) for i in range(self.ns) ]
+
 class RGB2DepthNet(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -19,6 +56,8 @@ class RGB2DepthNet(nn.Module):
         self.encoder = Backbone(config, 3)
         self.last_stage_channels = self.encoder.last_stage_channels
         self.sum_last_stage_channels = np.int(np.sum(np.asarray(self.last_stage_channels)))
+        
+        self.depth_estimation_subnet = MSDecoderSubnet(self.last_stage_channels)
 
         self.last_layer = nn.Sequential(
             nn.Conv2d(
@@ -34,8 +73,7 @@ class RGB2DepthNet(nn.Module):
                 out_channels=1,
                 kernel_size=extra.FINAL_CONV_KERNEL,
                 stride=1,
-                padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0),
-            nn.Sigmoid()
+                padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0)
         )
 
     def forward(self, rgb):
@@ -43,6 +81,9 @@ class RGB2DepthNet(nn.Module):
 
         x = self.encoder(rgb)
         encoder_output = x
+
+        x = self.depth_estimation_subnet(x)
+        from_depth_estimation = x
 
         # Upsampling 4 times
         x0_h, x0_w = x[0].size(2), x[0].size(3)
@@ -55,7 +96,7 @@ class RGB2DepthNet(nn.Module):
 
         x = F.interpolate(x, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
 
-        return encoder_output, x
+        return encoder_output, from_depth_estimation, x
 
     def init_weights(self, pretrained = ''):
         self.encoder.init_weights(pretrained)
