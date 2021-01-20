@@ -15,191 +15,91 @@ BatchNorm2d = SynchronizedBatchNorm2d
 BN_MOMENTUM = 0.01
 
 model_urls = {
-    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
-    'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
-    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
-    'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+    'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
+    'vgg13': 'https://download.pytorch.org/models/vgg13-c768596a.pth',
+    'vgg16': 'https://download.pytorch.org/models/vgg16-397923af.pth',
+    'vgg19': 'https://download.pytorch.org/models/vgg19-dcbb9e9d.pth',
+    'vgg11_bn': 'https://download.pytorch.org/models/vgg11_bn-6002323d.pth',
+    'vgg13_bn': 'https://download.pytorch.org/models/vgg13_bn-abd245e5.pth',
+    'vgg16_bn': 'https://download.pytorch.org/models/vgg16_bn-6c64b313.pth',
+    'vgg19_bn': 'https://download.pytorch.org/models/vgg19_bn-c79401a0.pth',
 }
 
-def conv3x3(in_planes, out_planes, stride=1):
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
+def make_layers(cfg, initial_inplanes, batch_norm = False):
+    layers = []
+    in_channels = initial_inplanes
+    for v in cfg:
+        if v == 'M':
+            layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+        else:
+            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+            if batch_norm:
+                layers += [conv2d, BatchNorm2d(v), nn.ReLU(inplace=True)]
+            else:
+                layers += [conv2d, nn.ReLU(inplace=True)]
+            in_channels = v
+    return nn.Sequential(*layers)
 
+cfgs = {
+    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'vgg16_bn': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
+    'vgg19_bn': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512,
+          512, 512, 'M'],
+}
 
-def conv1x1(in_planes, out_planes, stride=1):
-    """1x1 convolution"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride,
-                     bias=False)
-
-
-def conv3x3(in_planes, out_planes, stride=1):
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
-
-
-def conv1x1(in_planes, out_planes, stride=1):
-    """1x1 convolution"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride,
-                     bias=False)
-
-
-class BasicBlock(nn.Module):
-    expansion = 1
-    
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
-        self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.downsample = downsample
-        self.stride = stride
-    
-    def forward(self, x):
-        identity = x
-        
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        
-        out = self.conv2(out)
-        out = self.bn2(out)
-        
-        if self.downsample is not None:
-            identity = self.downsample(x)
-        
-        out += identity
-        out = self.relu(out)
-        
-        return out
-
-
-class Bottleneck(nn.Module):
-    expansion = 4
-    
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(Bottleneck, self).__init__()
-        self.conv1 = conv1x1(inplanes, planes)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = conv3x3(planes, planes, stride)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = conv1x1(planes, planes * self.expansion)
-        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
-        self.relu = nn.ReLU(inplace=True)
-        self.downsample = downsample
-        self.stride = stride
-    
-    def forward(self, x):
-        identity = x
-        
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-        
-        out = self.conv3(out)
-        out = self.bn3(out)
-        
-        if self.downsample is not None:
-            identity = self.downsample(x)
-        
-        out += identity
-        out = self.relu(out)
-        
-        return out
-
-
-class ResNet(nn.Module):
-    def __init__(self, dummy_config, initial_inplanes, block = Bottleneck, layers = [3, 4, 6, 3], zero_init_residual = True):
-        super(ResNet, self).__init__()
+class VGG(nn.Module):
+    def __init__(self, config, initial_inplanes):
+        super().__init__()
+        extra = config.MODEL.EXTRA
         self.initial_inplanes = initial_inplanes
-        self.inplanes = 64
-        self.conv1 = nn.Conv2d(self.initial_inplanes, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)  # 6
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)  # 3
-        
-        self.last_stage_channels = [ 64 * block.expansion,
-                                     128 * block.expansion,
-                                     256 * block.expansion,
-                                     512 * block.expansion ]
+        self.arch_name = extra['ARCH_NAME']
+        self.features = make_layers(cfgs[self.arch_name], self.initial_inplanes, True)
 
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight,
-                                        mode='fan_out',
-                                        nonlinearity='relu')
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-        
-        # Zero-initialize the last BN in each residual branch,
-        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
-        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
-        if zero_init_residual:
-            for m in self.modules():
-                if isinstance(m, Bottleneck):
-                    nn.init.constant_(m.bn3.weight, 0)
-                elif isinstance(m, BasicBlock):
-                    nn.init.constant_(m.bn2.weight, 0)
+        self.last_stage_channels = [ 128, 256, 512, 512 ]
     
-    def _make_layer(self, block, planes, blocks, stride=1):
-        downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = nn.Sequential(
-                conv1x1(self.inplanes, planes * block.expansion, stride),
-                nn.BatchNorm2d(planes * block.expansion),
-            )
+    def forward(self, x):
+        # extract the feature maps just before max pooling layer
+        if self.arch_name == 'vgg16_bn':
+            div1 = nn.Sequential(*tuple(self.features.children())[0:6])
+            div2 = nn.Sequential(*tuple(self.features.children())[6:13])
+            div4 = nn.Sequential(*tuple(self.features.children())[13:23])
+            div8 = nn.Sequential(*tuple(self.features.children())[23:33])
+            div16 = nn.Sequential(*tuple(self.features.children())[33:43])
+        elif self.arch_name == 'vgg19_bn':
+            div1 = nn.Sequential(*tuple(self.features.children())[0:6])
+            div2 = nn.Sequential(*tuple(self.features.children())[6:13])
+            div4 = nn.Sequential(*tuple(self.features.children())[13:26])
+            div8 = nn.Sequential(*tuple(self.features.children())[26:39])
+            div16 = nn.Sequential(*tuple(self.features.children())[39:52])
+        else:
+            raise NotImplementedError
         
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
-        self.inplanes = planes * block.expansion
-        for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes))
-        
-        return nn.Sequential(*layers)
+        x1 = div1(x)
+        x2 = div2(x1)
+        x3 = div4(x2)
+        x4 = div8(x3)
+        x5 = div16(x4)
 
+        # every feature map is larger than the one from ResNet or HRNet
+        ret = [ x2, x3, x4, x5 ]
+        
+        return ret
+    
     def init_weights(self, dummy_dirname):
-        pretrained_dict = model_zoo.load_url(model_urls['resnet50'])
-        pprint('=> loading ImageNet scratch pretrained model model_zoo.resnet50')
+        pretrained_dict = model_zoo.load_url(model_urls[self.arch_name])
+        pprint('=> loading ImageNet scratch pretrained model model_zoo.{}'.format(self.arch_name))
         model_dict = self.state_dict()
 
         filtered_dict = { }
         for k, v in pretrained_dict.items():
             if k in model_dict.keys():
-                if k.startswith('conv1') and self.initial_inplanes == 1:
+                if k.startswith('features.0') and self.initial_inplanes == 1:
                     continue
                 filtered_dict[k] = v
 
         model_dict.update(filtered_dict)
         self.load_state_dict(model_dict)
-        pprint('=> loaded ImageNet scratch pretrained model model_zoo.resnet50')
+        pprint('=> loaded ImageNet scratch pretrained model model_zoo.{}'.format(self.arch_name))
 
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        
-        x1 = self.layer1(x)
-        x2 = self.layer2(x1)
-        x3 = self.layer3(x2)
-        x4 = self.layer4(x3)
-        
-        ret = [ x1, x2, x3, x4 ]
-
-        return ret
-
-Backbone = ResNet
+Backbone = VGG

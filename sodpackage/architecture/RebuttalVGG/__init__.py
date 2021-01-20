@@ -1,1 +1,1 @@
-from . import RebuttalResNet
+from . import RebuttalVGG

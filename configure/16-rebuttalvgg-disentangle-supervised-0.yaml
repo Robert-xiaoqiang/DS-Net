@@ -1,4 +1,4 @@
-NAME: '19-rebuttalvgg-disentangle-supervised-0'
+NAME: '16-rebuttalvgg-disentangle-supervised-0'
 DEVICE: 'cuda:0,1,2,3'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
@@ -11,7 +11,7 @@ MODEL:
   PRETRAINED: 'dummy/dummy/dummy'
   EXTRA:
     FINAL_CONV_KERNEL: 1
-    ARCH_NAME: vgg19_bn
+    ARCH_NAME: vgg16_bn
 TRAIN:
   MTL_OUTPUT: multiple
   TRAINER: DADisentangleSupervisedTrainer

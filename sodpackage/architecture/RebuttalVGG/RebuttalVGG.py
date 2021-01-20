@@ -239,7 +239,7 @@ class MSDisentangleLoss(nn.Module):
 
         return y
 
-class RebuttalResNet(nn.Module):
+class RebuttalVGG(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -261,14 +261,14 @@ class RebuttalResNet(nn.Module):
         self.last_layer = nn.Sequential(
             nn.Conv2d(
                 in_channels=sum_last_stage_channels,
-                out_channels=sum_last_stage_channels,
+                out_channels=16,
                 kernel_size=1,
                 stride=1,
                 padding=0),
-            BatchNorm2d(sum_last_stage_channels, momentum=BN_MOMENTUM),
+            BatchNorm2d(16, momentum=BN_MOMENTUM),
             nn.ReLU(inplace=False),
             nn.Conv2d(
-                in_channels=sum_last_stage_channels,
+                in_channels=16,
                 out_channels=1,
                 kernel_size=extra.FINAL_CONV_KERNEL,
                 stride=1,
@@ -302,7 +302,7 @@ class RebuttalResNet(nn.Module):
 
         adaptive_combination = self.cgf(from_depth_estimation, from_rgb, from_depth_extraction)
         
-        adaptive_combination = RebuttalResNet.merge(adaptive_combination)
+        adaptive_combination = RebuttalVGG.merge(adaptive_combination)
         y = self.last_layer(adaptive_combination)
 
         y = F.interpolate(y, size=(ori_h, ori_w), mode='bilinear', align_corners=True)
