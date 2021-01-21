@@ -18,8 +18,8 @@ TRAIN:
   DATASET: TrainRGBDDataset
   DATASET_ROOT: '/home/xqwang/projects/saliency/datasets-fdp/NJUD-NLPR'
   TRAIN_SIZE:
-  - 128
-  - 128
+  - 256
+  - 256
   BATCH_SIZE: 8
   SHUFFLE: true
   NUM_EPOCHS: 900
