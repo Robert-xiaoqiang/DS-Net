@@ -15,7 +15,7 @@ import copy
 from collections import OrderedDict
 
 from ..helper.TrainHelper import AverageMeter, LoggerPather, DeviceWrapper, \
-GCMTDisentangleFullModel, MTFakeFullModel
+GCMTDisentangleFullModel, MTFakeFullModel, BerhuLoss
 from ..helper.TestHelper import Evaluator
 from ..inference.Deducer import Deducer
 

@@ -96,6 +96,5 @@ TEST:
   - LFSD: '/home/xqwang/projects/saliency/datasets-fdp/LFSD'
   - STERE: '/home/xqwang/projects/saliency/datasets-fdp/STERE'
   - DUT-RGBD: '/home/xqwang/projects/saliency/datasets-fdp/DUT-RGBD/test_data'
-  # - DUTS-TR: '/home/xqwang/projects/saliency/datasets-fdp/DUTS-TR'  
   BATCH_SIZE: 8
   WORKERS: 8
