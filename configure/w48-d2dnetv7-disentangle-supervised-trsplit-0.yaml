@@ -1,4 +1,4 @@
-NAME: 'w48-rebuttaldam-disentangle-supervised-0'
+NAME: 'w48-d2dnetv7-disentangle-supervised-trsplit-0'
 DEVICE: 'cuda:0,1,2,3'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/dev/summary'
@@ -7,7 +7,7 @@ CUDNN:
   DETERMINISTIC: false
   ENABLED: true
 MODEL:
-  NAME: RebuttalDAM
+  NAME: D2DNetv7
   PRETRAINED: '/home/xqwang/projects/saliency/dev/pretrained/hrnetv2_w48_imagenet_pretrained.pth'
   EXTRA:
     FINAL_CONV_KERNEL: 1
@@ -69,7 +69,7 @@ TRAIN:
   - 256
   BATCH_SIZE: 8
   SHUFFLE: true
-  NUM_EPOCHS: 50
+  NUM_EPOCHS: 900
   RESUME: true
   WORKERS: 4
   LOSS_FREQ: 10

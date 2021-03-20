@@ -15,6 +15,10 @@ class RGBDDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_root, train_size):
         super().__init__()
         self.data_list = self._make_list(dataset_root, [ 'RGB', 'depth', 'GT' ])
+
+        # rebuttal 3:7 setting, create a new class TrSplitRGBDDataset is better
+        self.data_list = self.data_list[:int(0.7 * len(self.data_list))]
+
         self.mean = np.array([0.447, 0.407, 0.386])
         self.std = np.array([0.244, 0.250, 0.253])
 
