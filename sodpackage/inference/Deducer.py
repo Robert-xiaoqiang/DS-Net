@@ -91,28 +91,6 @@ class Deducer:
         else:
             self.logger.info('loaded failed, test based on ImageNet scratch')
 
-    def build_data(self, batch_data):
-        batch_data = [ d.to(self.main_device, non_blocking=True) if torch.is_tensor(d) else d for d in batch_data ]
-        inputs = {
-            "input_ids": batch_data[0],
-            "attention_mask": batch_data[1],
-            "token_type_ids": batch_data[2],
-            "start_positions": batch_data[3],
-            "end_positions": batch_data[4],
-            "return_dict": False
-        }
-
-        if self.config.MODEL.LKEY in ["xlm", "roberta", "distilbert", "camembert"]:
-            del inputs["token_type_ids"]
-
-        if self.config.MODEL.LKEY in ["xlnet", "xlm"]:
-            inputs.update({"cls_index": batch_data[5], "p_mask": batch_data[6]})
-        
-        if self.config.TRAIN.DATASET_VERSION == 2:
-                inputs.update({"is_impossible": batch_data[7]})
-
-        return inputs
-
     def deduce(self):
         self.build_test_model()
         self.model.eval()

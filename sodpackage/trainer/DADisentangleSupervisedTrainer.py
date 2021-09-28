@@ -58,8 +58,10 @@ class DADisentangleSupervisedTrainer(SupervisedTrainer):
     def on_batch_end(self, output, batch_label,
                      sod_loss, depth_loss, reconstruct_loss,
                      epoch, batch_index):
-        
-        loss = sod_loss + depth_loss + 1.0 * reconstruct_loss
+        ###########################################################
+        loss = sod_loss + 0.1 * depth_loss + 1.0 * reconstruct_loss
+        ###########################################################
+
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
