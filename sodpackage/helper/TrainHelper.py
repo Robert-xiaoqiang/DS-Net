@@ -580,8 +580,9 @@ class GCMTDisentangleFullModel(nn.Module):
             gate_consistencies = [ self.loss[4](batch_outputs[2][i][lb:], unlabeled_ema_outputs[2][i]) for i in range(ns) ]
             # (4 scale sum) gate consistency
             gate_consistency = torch.sum(gate_consistencies)
-            print(gate_consistency)
-            consistency_loss = sod_consistency + depth_consistency + gate_consistency
+            
+            # consistency_loss = sod_consistency + depth_consistency + gate_consistency
+            consistency_loss = sod_consistency + 10.0 * gate_consistency
             # reconstruct loss is for all samples, all in bp !!!!
             reconstruct_loss = torch.mean(reconstruct_losses)
 

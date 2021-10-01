@@ -298,8 +298,8 @@ class SupervisedTrainer:
             self.logger.info('Epoch with validating loss {:.4f}, without updating best epoch'.format(val_loss))
         
         ####################################### debug ######################
-        if not epoch % 2:
-            self.save_checkpoint(epoch + 1, str(epoch))
+        # if not epoch % 2:
+        #     self.save_checkpoint(epoch + 1, str(epoch))
         ####################################################################
     
     def on_train_end(self):
