@@ -85,7 +85,7 @@ class PreTrainingDeducer:
         return tuple(batch_data)
 
     def build_test_model(self):        
-        b = self.load_checkpoint(snapshot_key = 'best')
+        b = self.load_checkpoint(snapshot_key = 'I do not want to use the best')
         if b:
             self.logger.info('loaded successfully, test based on model from best epoch {}'.format(self.loaded_epoch))
         else:
@@ -121,3 +121,8 @@ class PreTrainingDeducer:
                     pred.save(os.path.join(copy_path, image_main_name + '.png'))
 
         self.logger.info('Finish predicting and copying it, enjoy everything')
+
+    
+    # the same semantics as self.predict()
+    def deduce(self):
+        self.predict()

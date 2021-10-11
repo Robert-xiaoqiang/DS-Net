@@ -1,4 +1,4 @@
-NAME: 'w48-pretrain-1'
+NAME: 'w48-pretrain-1-tiprevision'
 DEVICE: 'cuda:0'
 SEED: 32767
 SUMMARY_DIR: '/home/xqwang/projects/saliency/DS-Net/summary'
@@ -68,7 +68,7 @@ TRAIN:
   - 256
   BATCH_SIZE: 16
   SHUFFLE: true
-  NUM_EPOCHS: 900
+  NUM_EPOCHS: 16
   RESUME: true
   WORKERS: 4
   LOSS_FREQ: 10

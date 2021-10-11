@@ -429,7 +429,7 @@ class HRNet(nn.Module):
     def init_weights(self, pretrained=''):
         if os.path.isfile(pretrained):
             pretrained_dict = torch.load(pretrained)
-            pprint('=> loading ImageNet scratch pretrained model {}'.format(pretrained))
+            pprint('=> loading ImageNet pretrained model {}'.format(pretrained))
             model_dict = self.state_dict()
 
             filtered_dict = { }
@@ -441,8 +441,8 @@ class HRNet(nn.Module):
 
             model_dict.update(filtered_dict)
             self.load_state_dict(model_dict)
-            pprint('=> loaded ImageNet scratch pretrained model {}'.format(pretrained))
+            pprint('=> loaded ImageNet pretrained model {}'.format(pretrained))
         else:
-            pprint('=> cannot find ImageNet scratch pretrained model')
+            pprint('=> cannot find ImageNet pretrained model')
 
 Backbone = HRNet
