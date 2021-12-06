@@ -1,9 +1,28 @@
-# Look for depth for unlabeled data
+# Boosting RGB-D Saliency Detection by Leveraging Unlabeled RGB
 
-# dependency & prerequisites
-- `pip install -r requirement.txt`
+- This repository is the official implementation of [the paper](https://github.com/Robert-xiaoqiang/S3Net).
 
-# feature
-- multi-task enhanced feature representation
-- pseudo label with mixup augmentation for semi-supervised learning
-- large scale color image without depth input for generalization
+- ![](demo/pipeline.png)
+
+## Our results
+
+- comming soon in BaiduPan [link](https://github.com/Robert-xiaoqiang/S3Net) or Google Drive [link](https://github.com/Robert-xiaoqiang/S3Net).
+
+## Prerequisites
+```bash
+pip install -r requirements.txt
+```
+
+## Datasets
+
+- download from this [link](http://dpfan.net/d3netbenchmark/).
+
+## Train
+
+## Test
+
+## Acknowledge
+
+## License
+
+## Citation
