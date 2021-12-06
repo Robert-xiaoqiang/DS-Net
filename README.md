@@ -2,7 +2,7 @@
 
 - This repository is the official implementation of [the paper](https://github.com/Robert-xiaoqiang/S3Net).
 
-- ![](demo/pipeline.png)
+![](demo/pipeline.png)
 
 ## Our results
 
