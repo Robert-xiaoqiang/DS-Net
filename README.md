@@ -1,12 +1,12 @@
 # Boosting RGB-D Saliency Detection by Leveraging Unlabeled RGB Images
 
-- This repository is the official implementation of [the paper](https://github.com/Robert-xiaoqiang/S3Net).
+- This repository is the official implementation of [the paper](https://ieeexplore.ieee.org/document/9673131).
 
 ![](demo/pipeline.png)
 
 ## Our results
 
-- comming soon in BaiduPan [link](https://github.com/Robert-xiaoqiang/S3Net) or Google Drive [link](https://github.com/Robert-xiaoqiang/S3Net).
+- comming soon in BaiduPan [link](https://github.com/Robert-xiaoqiang/DS-Net) or Google Drive [link](https://github.com/Robert-xiaoqiang/DS-Net).
 
 ## Prerequisites
 ```bash
